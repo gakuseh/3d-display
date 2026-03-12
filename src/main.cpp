@@ -46,16 +46,16 @@ void request_cv_process_update() {
         // Lock the mutex
         shared_vars::webcam_paintable_mutex.lock();
 
-        cv::Mat output;
+        cv::Mat output_image;
 
         if (!shared_vars::is_current_cv_action_face) { 
             // Do QR Code
-            cv_actions::detect_qr(shared_vars::webcam_capture, output, working_parameters::qr_code_inverse_proportion);
+            cv_actions::detect_qr(shared_vars::webcam_capture, output_image, working_parameters::qr_code_inverse_proportion);
         } else {
             // Run action
             std::tuple<double, double> left_eye_position_proportion_from_center;
             std::tuple<double, double> right_eye_position_proportion_from_center;
-            bool result = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::bounding_box, shared_vars::webcam_capture, output, left_eye_position_proportion_from_center, right_eye_position_proportion_from_center);
+            bool result = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::bounding_box, shared_vars::webcam_capture, output_image, left_eye_position_proportion_from_center, right_eye_position_proportion_from_center);
             
             if (result) {
                 double left_eye_horizontal_angle = std::get<0>(left_eye_position_proportion_from_center) * (parameters::webcam_fov_deg / 2.0f);
@@ -140,7 +140,7 @@ void request_cv_process_update() {
         }
 
         // Convert to GdkPaintable
-        GdkPaintable* new_paintable = cv_mat_to_paintable(output);
+        GdkPaintable* new_paintable = cv_mat_to_paintable(output_image);
 
         
         if (shared_vars::webcam_paintable) {
