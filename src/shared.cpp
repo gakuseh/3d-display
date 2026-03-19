@@ -84,7 +84,8 @@ void shared_vars::listen_for_renderer_socket_and_call_dispatcher() {
 
 namespace working_parameters {
     float qr_code_distance = 0;
-    float qr_code_inverse_proportion = 0;
+    float qr_code_width_proportion = 0;
+    float qr_code_height_proportion = 0;
     float lenticule_density = 0;
     float green_to_red_line_distance = 0;
 }

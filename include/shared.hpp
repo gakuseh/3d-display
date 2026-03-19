@@ -74,7 +74,8 @@ namespace shared_vars {
 
 namespace working_parameters {
     extern float qr_code_distance;
-    extern float qr_code_inverse_proportion;
+    extern float qr_code_width_proportion;
+    extern float qr_code_height_proportion;
     extern float lenticule_density;
     extern float green_to_red_line_distance;
 }
