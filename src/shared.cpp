@@ -93,8 +93,8 @@ namespace working_parameters {
 }
 
 namespace parameters {
-    float camera_horizontal_intrinsic_parameter;
-    float camera_vertical_intrinsic_parameter;
+    float camera_horizontal_intrinsic_parameter = 0;
+    float camera_vertical_intrinsic_parameter = 0;
     float pixels_per_lens = 0;
     float index_of_refraction = 1.5;
 }
