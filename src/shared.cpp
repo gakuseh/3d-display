@@ -64,7 +64,9 @@ void shared_vars::listen_for_renderer_socket_and_call_dispatcher() {
         
         try {
             std::getline(save_file, line);
-            parameters::webcam_fov_deg = std::stof(line);
+            parameters::camera_horizontal_intrinsic_parameter = std::stof(line);
+            std::getline(save_file, line);
+            parameters::camera_vertical_intrinsic_parameter = std::stof(line);
             std::getline(save_file, line);
             parameters::pixels_per_lens = std::stof(line);
             std::getline(save_file, line);

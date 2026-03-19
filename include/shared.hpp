@@ -81,7 +81,8 @@ namespace working_parameters {
 }
 
 namespace parameters {
-    extern float webcam_fov_deg;
+    extern float camera_horizontal_intrinsic_parameter;
+    extern float camera_vertical_intrinsic_parameter;
     extern float pixels_per_lens;
     extern float index_of_refraction;
 }

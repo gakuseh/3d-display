@@ -57,13 +57,15 @@ void event_handlers::on_measurements_continue_clicked(GtkWidget *widget, gpointe
 
     if (!was_parse_successful) return;
 
-    float qr_code_angular_size = std::atan2(QR_CODE_WIDTH/2, working_parameters::qr_code_distance) * 2 *(180.0/3.141592653589793238463);
-    parameters::webcam_fov_deg = qr_code_angular_size * working_parameters::qr_code_inverse_proportion;
+    // Calculate intrinsic parameters
+    parameters::camera_horizontal_intrinsic_parameter = working_parameters::qr_code_distance * working_parameters::qr_code_width_proportion / QR_CODE_WIDTH_INCH;
+    parameters::camera_vertical_intrinsic_parameter = working_parameters::qr_code_distance * working_parameters::qr_code_height_proportion / QR_CODE_WIDTH_INCH;
 
-    std::cout << "QR Code distance: " << working_parameters::qr_code_distance << " in." << std::endl;
-    std::cout << "Webcam FOV: " << qr_code_angular_size << " degrees" << std::endl; 
+    std::cout << "QR Code distance: " << working_parameters::qr_code_distance << " in." << std::endl; 
     std::cout << "Lenticule density: " << working_parameters::lenticule_density << " LPI" << std::endl;
     std::cout << "Index of refraction: " << parameters::index_of_refraction << std::endl;
+    std::cout << "Horizontal intrinsic parameter:" << parameters::camera_horizontal_intrinsic_parameter << std::endl;
+    std::cout << "Vertical intrinsic parameter:" << parameters::camera_vertical_intrinsic_parameter << std::endl;
 
     // Tell 3D renderer to display the measurement window
     std::vector<int64_t> message;
@@ -107,7 +109,8 @@ void event_handlers::on_display_density_continue_clicked(GtkWidget *widget, gpoi
     // Write all parameters to a save file
     std::ofstream save_file("calibration_settings.txt");
     if (save_file.is_open()) {
-        save_file << parameters::webcam_fov_deg << std::endl;
+        save_file << parameters::camera_horizontal_intrinsic_parameter << std::endl;
+        save_file << parameters::camera_vertical_intrinsic_parameter << std::endl;
         save_file << parameters::pixels_per_lens << std::endl;
         save_file << parameters::index_of_refraction << std::endl;
         save_file.close();
