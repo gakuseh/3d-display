@@ -1,87 +1,84 @@
 #include "cv_actions.hpp"
 
 bool cv_actions::detect_face(
-    cv::Ptr<cv::FaceDetectorYN>& face_model, 
-    cv::Rect& search_bounds,
+    cv::Ptr<cv::FaceDetectorYN>& face_model_pointer, 
     cv::VideoCapture &cap,
-    cv::Mat& out_frame, 
-    std::tuple<double, double>& left_eye_position_proportion_from_center,
-    std::tuple<double, double>& right_eye_position_proportion_from_center
+    cv::Rect& bounding_box,
+    cv::Mat& output_image, 
+    std::tuple<int, int>& left_eye_coord,
+    std::tuple<int, int>& right_eye_coord
 ) {
     
     if (!cap.isOpened()) {
         return false; // Failed to open webcam
     }
 
-    cap >> out_frame; // Capture a full_frame
-    if (out_frame.empty()) {
+    cap >> output_image; // Capture a full_frame
+    if (output_image.empty()) {
         return false; // Failed to capture full_frame
     }
 
-    if (search_bounds.width < 63 || search_bounds.height < 63) {
+    if (bounding_box.width < 63 || bounding_box.height < 63) {
         // Minimum size for the face detector is 63x63, otherwise it crashes(?)
 
-        search_bounds = cv::Rect(
+        bounding_box = cv::Rect(
             0,
             0,
-            out_frame.cols,
-            out_frame.rows
+            output_image.cols,
+            output_image.rows
         ); // Reset search bounds
         return false;
     }
 
 
-    face_model->setInputSize(search_bounds.size());
+    face_model_pointer->setInputSize(bounding_box.size());
 
-    cv::Mat sub_mat = cv::Mat(out_frame, search_bounds);
+    // Search the sub_mat, which is only the area of the image within the bounding box.
+    cv::Mat sub_mat = cv::Mat(output_image, bounding_box);
     cv::Mat output_array;
 
-    face_model->detect(sub_mat, output_array);
+    face_model_pointer->detect(sub_mat, output_array);
 
     if (output_array.rows == 0) {
-        search_bounds = cv::Rect(
+        bounding_box = cv::Rect(
             0,
             0,
-            out_frame.cols,
-            out_frame.rows
+            output_image.cols,
+            output_image.rows
         ); // Reset search bounds
         return false; // No face detected
     }
 
-    int face_x = (int)output_array.at<float>(0, 0) + search_bounds.x;
-    int face_y = (int)output_array.at<float>(0, 1) + search_bounds.y;
+    int face_x = (int)output_array.at<float>(0, 0) + bounding_box.x;
+    int face_y = (int)output_array.at<float>(0, 1) + bounding_box.y;
     int face_width = (int)output_array.at<float>(0, 2);
     int face_height = (int)output_array.at<float>(0, 3);
-    cv::Rect face_rect(face_x, face_y, face_width, face_height);
 
-    left_eye_position_proportion_from_center = std::make_tuple(
-        (double)(output_array.at<float>(0, 6) + search_bounds.x - out_frame.cols/2) / out_frame.cols * 2,
-        (double)(output_array.at<float>(0, 7) + search_bounds.y - out_frame.rows/2) / out_frame.rows * 2
+    left_eye_coord = std::make_tuple(
+        (int)output_array.at<float>(0, 6) + bounding_box.x,
+        (int)output_array.at<float>(0, 7) + bounding_box.y
     );
 
-    right_eye_position_proportion_from_center = std::make_tuple(
-        (double)(output_array.at<float>(0, 4) + search_bounds.x - out_frame.cols/2) / out_frame.cols * 2,
-        (double)(output_array.at<float>(0, 5) + search_bounds.y - out_frame.rows/2) / out_frame.rows * 2
+    right_eye_coord = std::make_tuple(
+        (int)output_array.at<float>(0, 4) + bounding_box.x,
+        (int)output_array.at<float>(0, 5) + bounding_box.y
     );
 
-    cv::Point left_eye_position;
-    cv::Point right_eye_position;
-
-    left_eye_position = cv::Point(
-        (int)output_array.at<float>(0, 6) + search_bounds.x,
-        (int)output_array.at<float>(0, 7) + search_bounds.y
+    cv::Point left_eye_position_as_cv_point(
+        (int)output_array.at<float>(0, 6) + bounding_box.x,
+        (int)output_array.at<float>(0, 7) + bounding_box.y
     );
-    right_eye_position = cv::Point(
-        (int)output_array.at<float>(0, 4) + search_bounds.x,
-        (int)output_array.at<float>(0, 5) + search_bounds.y
+    cv::Point right_eye_position_as_cv_point(
+        (int)output_array.at<float>(0, 4) + bounding_box.x,
+        (int)output_array.at<float>(0, 5) + bounding_box.y
     );
 
 
     // Draw search bounds
-    cv::rectangle(out_frame, search_bounds, cv::Scalar(255, 0, 0), 2);
+    cv::rectangle(output_image, bounding_box, cv::Scalar(255, 0, 0), 2);
 
     // Draw face rectangle
-    cv::rectangle(out_frame, cv::Rect(
+    cv::rectangle(output_image, cv::Rect(
         face_x,
         face_y,
         face_width,
@@ -89,19 +86,19 @@ bool cv_actions::detect_face(
     ), cv::Scalar(0, 255, 0), 2);
 
     // Draw eye positions
-    cv::circle(out_frame, left_eye_position, 5, cv::Scalar(255, 0, 0), -1);
-    cv::circle(out_frame, right_eye_position, 5, cv::Scalar(255, 0, 0), -1);
+    cv::circle(output_image,  left_eye_position_as_cv_point, 5, cv::Scalar(255, 0, 0), -1);
+    cv::circle(output_image, right_eye_position_as_cv_point, 5, cv::Scalar(255, 0, 0), -1);
 
-    int x_new = std::clamp((int)(face_x + face_width/2 - face_width*SEARCH_AREA_SIZE/2), 0, out_frame.cols);
-    int y_new = std::clamp((int)(face_y + face_height/2 - face_height*SEARCH_AREA_SIZE/2), 0, out_frame.rows);
-    int width_new = std::clamp((int)(face_width*SEARCH_AREA_SIZE), 0, out_frame.cols - x_new);
-    int height_new = std::clamp((int)(face_height*SEARCH_AREA_SIZE), 0, out_frame.rows - y_new);
+    int new_bounding_box_x = std::clamp((int)(face_x + face_width/2 - face_width*SEARCH_AREA_SIZE/2), 0, output_image.cols);
+    int new_bounding_box_y = std::clamp((int)(face_y + face_height/2 - face_height*SEARCH_AREA_SIZE/2), 0, output_image.rows);
+    int new_bounding_box_width = std::clamp((int)(face_width*SEARCH_AREA_SIZE), 0, output_image.cols - new_bounding_box_x);
+    int new_bounding_box_height = std::clamp((int)(face_height*SEARCH_AREA_SIZE), 0, output_image.rows - new_bounding_box_y);
 
-    search_bounds = cv::Rect(
-        x_new,
-        y_new,
-        width_new,
-        height_new
+    bounding_box = cv::Rect(
+        new_bounding_box_x,
+        new_bounding_box_y,
+        new_bounding_box_width,
+        new_bounding_box_height
     );
 
     return true;

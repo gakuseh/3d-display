@@ -14,15 +14,19 @@ CV Actions. Captures from webcam and processes them.
 const float SEARCH_AREA_SIZE = 1.5f;
 
 namespace cv_actions {
-    // Capture a frame from the webcam
-    // Returns false if either unsuccessful or no face detected
+    // Gets a frame from the VideoCapture and tries to detect faces using the 
+    // given face_model. If a face is detected, this function outputs the image 
+    // Mat, as well as the coordinates of the two eyes on the image. The 
+    // coordinates are relative to the origin at the top-left of the image.
+    // A bounding box can also be provided. The bounding box will be mutated to
+    // match the detected face.
     bool detect_face(
         cv::Ptr<cv::FaceDetectorYN>& face_model_pointer,
-        cv::Rect& bounding_box,
         cv::VideoCapture& cap,
-        cv::Mat& out_frame,
-        std::tuple<double, double>& left_eye_position_proportion_from_center,
-        std::tuple<double, double>& right_eye_position_proportion_from_center
+        cv::Rect& bounding_box,
+        cv::Mat& output_image,
+        std::tuple<int, int>& left_eye_coord,
+        std::tuple<int, int>& right_eye_coord
     );
 
     bool detect_qr(
