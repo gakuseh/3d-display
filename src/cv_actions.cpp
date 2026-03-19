@@ -107,7 +107,8 @@ bool cv_actions::detect_face(
 bool cv_actions::detect_qr(
     cv::VideoCapture& cap,
     cv::Mat& out_frame,
-    float& qr_code_inverse_proportion
+    float& qr_code_width_proportion,
+    float& qr_code_height_proportion
 ) {
     cv::QRCodeDetector detector;
 
@@ -123,11 +124,11 @@ bool cv_actions::detect_qr(
     }
 
     // Output is like x, y, x, y, x, y
-    // Start from top left and go CV
+    // Start from top left and go clockwise
 
     int qr_code_x = (int)output_points.at<float>(0, 0);
     int qr_code_y = (int)output_points.at<float>(0, 1);
-    int qr_code_width = (int)output_points.at<float>(0, 2) - qr_code_x;
+    int qr_code_width = (int)output_points.at<float>(0, 4) - qr_code_x;
     int qr_code_height = (int)output_points.at<float>(0, 5) - qr_code_y;
 
     // Draw QR code rectangle
@@ -138,7 +139,8 @@ bool cv_actions::detect_qr(
         qr_code_height
     ), cv::Scalar(0, 255, 0), 2);
 
-    qr_code_inverse_proportion = (float)out_frame.cols / qr_code_width;
+    qr_code_width_proportion = qr_code_width  / (float)out_frame.cols;
+    qr_code_height_proportion = qr_code_height / (float)out_frame.rows;
 
     return true;
 }
