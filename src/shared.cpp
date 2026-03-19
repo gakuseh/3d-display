@@ -21,8 +21,8 @@ namespace shared_vars {
     GtkEditable* lenticule_density_editable = nullptr;
     GtkEditable* index_of_refraction_editable = nullptr;
     GtkEditable* green_red_line_distance_editable = nullptr;
-    GtkEditable* horizontal_displacement_editable = nullptr;
-    GtkEditable* vertical_displacement_editable = nullptr;
+    GtkEditable* horizontal_offset_editable = nullptr;
+    GtkEditable* vertical_offset_editable = nullptr;
 
     std::thread cv_process_thread;
     bool is_current_cv_action_face = true;
@@ -71,6 +71,10 @@ void shared_vars::listen_for_renderer_socket_and_call_dispatcher() {
             parameters::pixels_per_lens = std::stof(line);
             std::getline(save_file, line);
             parameters::index_of_refraction = std::stof(line);
+            std::getline(save_file, line);
+            parameters::camera_horizontal_offset_inches = std::stof(line);
+            std::getline(save_file, line);
+            parameters::camera_vertical_offset_inches = std::stof(line);
         } catch (const std::invalid_argument& e) {
             std::cerr << "Invalid settings file: " << e.what() << std::endl;
         }
@@ -97,4 +101,6 @@ namespace parameters {
     float camera_vertical_intrinsic_parameter = 0;
     float pixels_per_lens = 0;
     float index_of_refraction = 1.5;
+    float camera_horizontal_offset_inches = 0;
+    float camera_vertical_offset_inches = 0;
 }

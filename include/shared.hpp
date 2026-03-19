@@ -42,8 +42,8 @@ namespace shared_vars {
     extern GtkEditable* lenticule_density_editable;
     extern GtkEditable* green_red_line_distance_editable;
     extern GtkEditable* index_of_refraction_editable;
-    extern GtkEditable* horizontal_displacement_editable;
-    extern GtkEditable* vertical_displacement_editable;
+    extern GtkEditable* horizontal_offset_editable;
+    extern GtkEditable* vertical_offset_editable;
 
     extern std::thread cv_process_thread;
     extern bool is_current_cv_action_face;
@@ -85,4 +85,6 @@ namespace parameters {
     extern float camera_vertical_intrinsic_parameter;
     extern float pixels_per_lens;
     extern float index_of_refraction;
+    extern float camera_horizontal_offset_inches;
+    extern float camera_vertical_offset_inches;
 }

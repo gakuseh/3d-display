@@ -20,6 +20,6 @@ struct gtk_signal_data {
     GtkEditable *qr_code_distance_editable;
     GtkEditable *lenticule_density_editable;
     GtkEditable *green_red_line_distance_editable;
-    GtkEditable *horizontal_displacement_editable;
-    GtkEditable *vertical_displacement_editable;
+    GtkEditable *horizontal_offset_editable;
+    GtkEditable *vertical_offset_editable;
 };

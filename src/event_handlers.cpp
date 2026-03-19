@@ -113,8 +113,50 @@ void event_handlers::on_display_density_continue_clicked(GtkWidget *widget, gpoi
         save_file << parameters::camera_vertical_intrinsic_parameter << std::endl;
         save_file << parameters::pixels_per_lens << std::endl;
         save_file << parameters::index_of_refraction << std::endl;
+        save_file << parameters::camera_horizontal_intrinsic_parameter << std::endl;
+        save_file << parameters::camera_vertical_intrinsic_parameter << std::endl;
         save_file.close();
     }
+
+    // Switch to the horizontal offset calibration stack
+    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "horizontal_offset_calibration_box");
+}
+
+void event_handlers::on_horizontal_offset_continue_clicked(GtkWidget *widget, gpointer _)
+{
+    std::string horizontal_offset_input(gtk_editable_get_chars(shared_vars::horizontal_offset_editable, 0, -1));
+    bool was_parse_successful = false;
+
+    try {
+        parameters::camera_horizontal_offset_inches = std::stof(horizontal_offset_input);
+        was_parse_successful = true;
+    } catch (const std::invalid_argument& e) {
+        std::cerr << "Invalid input for horizontal offset: " << e.what() << std::endl;
+    }
+
+    if (!was_parse_successful) return;
+
+    std::cout << "Horizontal offset: " << parameters::camera_horizontal_offset_inches << " in." << std::endl;
+
+    // Switch to the vertical offset calibration stack
+    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "vertical_offset_calibration_box");
+}
+
+void event_handlers::on_vertical_offset_continue_clicked(GtkWidget *widget, gpointer _)
+{
+    std::string vertical_offset_input(gtk_editable_get_chars(shared_vars::vertical_offset_editable, 0, -1));
+    bool was_parse_successful = false;
+
+    try {
+        parameters::camera_vertical_offset_inches = std::stof(vertical_offset_input);
+        was_parse_successful = true;
+    } catch (const std::invalid_argument& e) {
+        std::cerr << "Invalid input for vertical offset: " << e.what() << std::endl;
+    }
+
+    if (!was_parse_successful) return;
+
+    std::cout << "vertical offset: " << parameters::camera_vertical_offset_inches << " in." << std::endl;
 
     // Switch to the main menu
     gtk_stack_set_visible_child_name(shared_vars::stack_widget, "main_box");

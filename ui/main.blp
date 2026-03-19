@@ -272,6 +272,116 @@ Box display_density_calibration_box {
     }
 }
 
+Box horizontal_offset_calibration_box {
+    orientation: vertical;
+    spacing: 10;
+    margin-start: 20;
+    margin-end: 20;
+    margin-top: 20;
+    margin-bottom: 20;
+
+    Label {
+        name: "title_label";
+        label: "Calibration: Horizontal offset";
+        xalign: 0;
+    }
+
+    Separator {
+        orientation: horizontal;
+    }
+
+    Box {
+        orientation: vertical;
+        spacing: 30;
+
+        Label { 
+            label: "Look at the renderer window. Measure the horizontal distance between the center of the red dot on the renderer window. The green line in the diagram below represents the distance you need to measure.";
+            xalign: 0;
+            wrap: true;
+        }
+
+        Box {
+            orientation: horizontal;
+
+            Label {
+                label: "Distance from green line to red line: ";
+            }
+
+            Entry horizontal_offset_entry {
+                placeholder-text: "Value in inches";
+            }
+
+            Label {
+                label: " in.";
+            }
+
+        }
+
+        Button horizontal_offset_continue_button {
+            label: "Continue";
+            halign: start;
+        }
+
+        Picture horizontal_offset_diagram {
+        }
+    }
+}
+
+Box vertical_offset_calibration_box {
+    orientation: vertical;
+    spacing: 10;
+    margin-start: 20;
+    margin-end: 20;
+    margin-top: 20;
+    margin-bottom: 20;
+
+    Label {
+        name: "title_label";
+        label: "Calibration: Vertical offset";
+        xalign: 0;
+    }
+
+    Separator {
+        orientation: horizontal;
+    }
+
+    Box {
+        orientation: vertical;
+        spacing: 30;
+
+        Label { 
+            label: "Look at the renderer window. Measure the vertical distance between the center of the red dot on the renderer window. The green line in the diagram below represents the distance you need to measure.";
+            xalign: 0;
+            wrap: true;
+        }
+
+        Box {
+            orientation: horizontal;
+
+            Label {
+                label: "Vertical offset: ";
+            }
+
+            Entry vertical_offset_entry {
+                placeholder-text: "Value in inches";
+            }
+
+            Label {
+                label: " in.";
+            }
+
+        }
+
+        Button vertical_offset_continue_button {
+            label: "Continue";
+            halign: start;
+        }
+
+        Picture vertical_offset_diagram {
+        }
+    }
+}
+
 Window main_window {
     title: "3D Display Control Panel";
     default-width: 200;
