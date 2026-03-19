@@ -5,8 +5,8 @@ bool cv_actions::detect_face(
     cv::VideoCapture &cap,
     cv::Rect& bounding_box,
     cv::Mat& output_image, 
-    std::tuple<int, int>& left_eye_coord,
-    std::tuple<int, int>& right_eye_coord
+    std::tuple<float, float>& left_eye_uv,
+    std::tuple<float, float>& right_eye_uv
 ) {
     
     if (!cap.isOpened()) {
@@ -54,14 +54,14 @@ bool cv_actions::detect_face(
     int face_width = (int)output_array.at<float>(0, 2);
     int face_height = (int)output_array.at<float>(0, 3);
 
-    left_eye_coord = std::make_tuple(
-        (int)output_array.at<float>(0, 6) + bounding_box.x,
-        (int)output_array.at<float>(0, 7) + bounding_box.y
+    left_eye_uv = std::make_tuple(
+        (output_array.at<float>(0, 6) + bounding_box.x) / output_image.cols,
+        (output_array.at<float>(0, 7) + bounding_box.y) / output_image.rows
     );
 
-    right_eye_coord = std::make_tuple(
-        (int)output_array.at<float>(0, 4) + bounding_box.x,
-        (int)output_array.at<float>(0, 5) + bounding_box.y
+    right_eye_uv = std::make_tuple(
+        (output_array.at<float>(0, 4) + bounding_box.x) / output_image.cols,
+        (output_array.at<float>(0, 5) + bounding_box.y) / output_image.rows
     );
 
     cv::Point left_eye_position_as_cv_point(

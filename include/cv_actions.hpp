@@ -16,8 +16,9 @@ const float SEARCH_AREA_SIZE = 1.5f;
 namespace cv_actions {
     // Gets a frame from the VideoCapture and tries to detect faces using the 
     // given face_model. If a face is detected, this function outputs the image 
-    // Mat, as well as the coordinates of the two eyes on the image. The 
+    // Mat, as well as the UV coordinates of the two eyes on the image. The 
     // coordinates are relative to the origin at the top-left of the image.
+    // The UV coordinates are bounded from 0 to 1.
     // A bounding box can also be provided. The bounding box will be mutated to
     // match the detected face.
     bool detect_face(
@@ -25,13 +26,14 @@ namespace cv_actions {
         cv::VideoCapture& cap,
         cv::Rect& bounding_box,
         cv::Mat& output_image,
-        std::tuple<int, int>& left_eye_coord,
-        std::tuple<int, int>& right_eye_coord
+        std::tuple<float, float>& left_eye_uv,
+        std::tuple<float, float>& right_eye_uv
     );
 
     bool detect_qr(
         cv::VideoCapture& cap,
         cv::Mat& out_frame,
-        float& qr_code_inverse_proportion
+        float& qr_code_width_proportion,
+        float& qr_code_height_proportion
     );
 }
