@@ -197,6 +197,24 @@ activate (GtkApplication *app,
     shared_vars::main_window = GTK_WIDGET (gtk_builder_get_object (shared_vars::builder, "main_window"));
     gtk_window_set_application (GTK_WINDOW (shared_vars::main_window), app);
 
+    // Get the horizontal_displacement_diagram picture widget and set its file
+    if (GtkWidget *horizontal_displacement_diagram = GTK_WIDGET (gtk_builder_get_object (shared_vars::builder, "horizontal_displacement_diagram"))) {
+        GFile *image_file = g_file_new_for_path("horizontal-displacement-diagram.png");
+        gtk_picture_set_file(GTK_PICTURE(horizontal_displacement_diagram), image_file);
+        g_object_unref(image_file);
+    } else {
+        g_warning("Could not find diagram picture widget");
+    }
+
+    // Get the vertical_displacement_diagram picture widget and set its file
+    if (GtkWidget *vertical_displacement_diagram = GTK_WIDGET (gtk_builder_get_object (shared_vars::builder, "vertical_displacement_diagram"))) {
+        GFile *image_file = g_file_new_for_path("vertical-displacement-diagram.png");
+        gtk_picture_set_file(GTK_PICTURE(vertical_displacement_diagram), image_file);
+        g_object_unref(image_file);
+    } else {
+        g_warning("Could not find diagram picture widget");
+    }
+
     // Set up webcam image variables
     shared_vars::main_webcam_image = GTK_PICTURE(gtk_builder_get_object (shared_vars::builder, "main_webcam_image"));
     shared_vars::fov_webcam_image = GTK_PICTURE(gtk_builder_get_object (shared_vars::builder, "fov_webcam_image"));
@@ -243,20 +261,24 @@ activate (GtkApplication *app,
     GtkWidget *display_density_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "display_density_continue_button"));
     GtkWidget *measurements_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "measurements_continue_button"));
     GtkWidget *change_object_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "change_button"));
+    GtkWidget *horizontal_offset_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "horizontal_offset_continue_button"));
+    GtkWidget *vertical_offset_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "vertical_offset_continue_button"));
 
     g_signal_connect(calibrate_button, "clicked", G_CALLBACK(event_handlers::on_calibrate_button_clicked), NULL);
     g_signal_connect(fov_calibration_capture_button, "clicked", G_CALLBACK(event_handlers::on_fov_calibration_capture_clicked), NULL);
     g_signal_connect(display_density_continue_button, "clicked", G_CALLBACK(event_handlers::on_display_density_continue_clicked), NULL);
     g_signal_connect(measurements_continue_button, "clicked", G_CALLBACK(event_handlers::on_measurements_continue_clicked), NULL);
     g_signal_connect(change_object_button, "clicked", G_CALLBACK(event_handlers::on_change_object_clicked), NULL);
+    g_signal_connect(horizontal_offset_continue_button, "clicked", G_CALLBACK(event_handlers::on_horizontal_offset_continue_clicked), NULL);
+    g_signal_connect(vertical_offset_continue_button, "clicked", G_CALLBACK(event_handlers::on_vertical_offset_continue_clicked), NULL);
 
     // Set up the entry pointers
     shared_vars::qr_code_distance_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "qr_code_distance_entry"));
     shared_vars::lenticule_density_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "lenticule_density_entry"));
     shared_vars::index_of_refraction_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "index_of_refraction_entry"));
     shared_vars::green_red_line_distance_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "green_red_line_distance_entry"));
-    shared_vars::horizontal_displacement_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "horizontal_displacement_entry"));
-    shared_vars::vertical_displacement_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "vertical_displacement_entry"));
+    shared_vars::horizontal_offset_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "horizontal_offset_entry"));
+    shared_vars::vertical_offset_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "vertical_offset_entry"));
 
 
     // Show the window
