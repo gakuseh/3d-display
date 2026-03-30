@@ -42,6 +42,7 @@ GdkPaintable* cv_mat_to_paintable(const cv::Mat& mat) {
 
 void request_cv_process_update() {
     while (shared_vars::do_cv_thread_run) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000/60));
 
         // Lock the mutex
         shared_vars::webcam_paintable_mutex.lock();
@@ -51,91 +52,87 @@ void request_cv_process_update() {
         if (!shared_vars::is_current_cv_action_face) { 
             // Do QR Code
             cv_actions::detect_qr(shared_vars::webcam_capture, output_image, working_parameters::qr_code_width_proportion, working_parameters::qr_code_height_proportion);
+            //std::cout << "DEBUG: QR COde width proportion, QR code height proportion: " + std::to_string(working_parameters::qr_code_width_proportion) + " " + std::to_string(working_parameters::qr_code_height_proportion) << std::endl;
         } else {
-            // Run action
-            std::tuple<double, double> left_eye_position_proportion_from_center;
-            std::tuple<double, double> right_eye_position_proportion_from_center;
-            bool result = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::bounding_box, shared_vars::webcam_capture, output_image, left_eye_position_proportion_from_center, right_eye_position_proportion_from_center);
-            
-            if (result) {
-                double left_eye_horizontal_angle = std::get<0>(left_eye_position_proportion_from_center) * (parameters::webcam_fov_deg / 2.0f);
-                double left_eye_vertical_angle = std::get<1>(left_eye_position_proportion_from_center) * (parameters::webcam_fov_deg / 2.0f);
-                double right_eye_horizontal_angle = std::get<0>(right_eye_position_proportion_from_center) * (parameters::webcam_fov_deg / 2.0f);
-                double right_eye_vertical_angle = std::get<1>(right_eye_position_proportion_from_center) * (parameters::webcam_fov_deg / 2.0f);
+            // Get eye coordinates as pixels on the image. Coordinates should
+            // have the origin in the top left of the image.
+            std::tuple<float, float> left_eye_uv;
+            std::tuple<float, float> right_eye_uv;
 
-                shared_vars::left_eye_horizontal_angle_buffer_sum += left_eye_horizontal_angle;
-                shared_vars::left_eye_horizontal_angle_buffer.push(left_eye_horizontal_angle);
-                shared_vars::left_eye_vertical_angle_buffer_sum += left_eye_vertical_angle;
-                shared_vars::left_eye_vertical_angle_buffer.push(left_eye_vertical_angle);
-                shared_vars::right_eye_horizontal_angle_buffer_sum += right_eye_horizontal_angle;
-                shared_vars::right_eye_horizontal_angle_buffer.push(right_eye_horizontal_angle);
-                shared_vars::right_eye_vertical_angle_buffer_sum += right_eye_vertical_angle;
-                shared_vars::right_eye_vertical_angle_buffer.push(right_eye_vertical_angle);
+            bool did_detect_face = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::webcam_capture, shared_vars::bounding_box, output_image, left_eye_uv, right_eye_uv);
 
-                if (shared_vars::left_eye_horizontal_angle_buffer.size() > shared_vars::BUFFER_SIZE) {
-                    shared_vars::left_eye_horizontal_angle_buffer_sum -= shared_vars::left_eye_horizontal_angle_buffer.front();
-                    shared_vars::left_eye_horizontal_angle_buffer.pop();
-                }
+            // If the face detection did not work, then continue onto next loop
+            if (did_detect_face)
+            {
+                // std::cout << std::endl; //DEBUG
+                float l_u = std::get<0>(left_eye_uv);
+                float l_v = std::get<1>(left_eye_uv);
 
-                if (shared_vars::left_eye_vertical_angle_buffer.size() > shared_vars::BUFFER_SIZE) {
-                    shared_vars::left_eye_vertical_angle_buffer_sum -= shared_vars::left_eye_vertical_angle_buffer.front();
-                    shared_vars::left_eye_vertical_angle_buffer.pop();
-                }
+                float r_u = std::get<0>(right_eye_uv);
+                float r_v = std::get<1>(right_eye_uv);
 
-                if (shared_vars::right_eye_horizontal_angle_buffer.size() > shared_vars::BUFFER_SIZE) {
-                    shared_vars::right_eye_horizontal_angle_buffer_sum -= shared_vars::right_eye_horizontal_angle_buffer.front();
-                    shared_vars::right_eye_horizontal_angle_buffer.pop();
-                }
+                //std::cout << std::string("DEBUG: Left UV: ") + "(" + std::to_string(l_u) + ", " + std::to_string(l_v) + ")" + "Right UV: " + "(" + std::to_string(r_u) + ", " + std::to_string(r_v) + ")" << std::endl;
 
-                if (shared_vars::right_eye_vertical_angle_buffer.size() > shared_vars::BUFFER_SIZE) {
-                    shared_vars::right_eye_vertical_angle_buffer_sum -= shared_vars::right_eye_vertical_angle_buffer.front();
-                    shared_vars::right_eye_vertical_angle_buffer.pop();
-                }
+                // Calculate left eye and right eye depth
 
+                // Vectors pointing to left and right eyes
+                float l_vector_x = (0.5 - l_u)/parameters::camera_horizontal_intrinsic_parameter;
+                float l_vector_y = (0.5 - l_v)/parameters::camera_vertical_intrinsic_parameter;
+                float l_vector_z = 1;
+                float l_vector_mag = static_cast<float>(std::sqrt(std::pow(l_vector_x, 2) + std::pow(l_vector_y, 2) + std::pow(l_vector_z, 2)));
 
+                float r_vector_x = (0.5 - r_u)/parameters::camera_horizontal_intrinsic_parameter;
+                float r_vector_y = (0.5 - r_v)/parameters::camera_vertical_intrinsic_parameter;
+                float r_vector_z = 1;
+                float r_vector_mag = static_cast<float>(std::sqrt(std::pow(r_vector_x, 2) + std::pow(r_vector_y, 2) + std::pow(r_vector_z, 2)));
 
-                if (shared_vars::is_renderer_active) {
-                    std::vector<int64_t> request_code;
-                    request_code.push_back((int64_t)4);
-                    
-                    try {
-                        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer(request_code));
-                    } catch (const boost::system::system_error& e) {
-                        if (e.code() == boost::asio::error::broken_pipe || 
-                            e.code() == boost::asio::error::connection_reset ||
-                            e.code() == boost::asio::error::eof) {
-                            std::cout << "Socket disconnected: " << e.what() << std::endl;
-                            shared_vars::is_renderer_active = false;
+                // Angle between the left and right vectors
+                float cosine_theta = (l_vector_x * r_vector_x + l_vector_y * r_vector_y + l_vector_z * r_vector_z)/(l_vector_mag * r_vector_mag);
+                float theta = std::acos(cosine_theta);
 
-                            g_application_quit(G_APPLICATION(shared_vars::app));
-                        }
-                    }
+                // std::cout << "DEBUG: Horizontal intrinsic parameter " << std::to_string(parameters::camera_horizontal_intrinsic_parameter) << std::endl;
+                // std::cout << "DEBUG: Vertical intrinsic parameter " << std::to_string(parameters::camera_vertical_intrinsic_parameter) << std::endl;
+                // std::cout << std::string("DEBUG: Left Vector: ") + "(" + std::to_string(l_vector_x) + ", " + std::to_string(l_vector_y) + ", " + std::to_string(l_vector_z) + ")";
+                // std::cout << std::string(" Right Vector: ") + "(" + std::to_string(r_vector_x) + ", " + std::to_string(r_vector_y) + ", " + std::to_string(r_vector_z)+ ")" << std::endl;
+                //
+                // std::cout << "DEBUG: Distance between two eyes, UV: " + std::to_string(std::sqrt(std::pow(l_u - r_u, 2) + std::pow(l_v - r_v, 2))) << std::endl;
+                // std::cout << "DEBUG: Angle between left and right vectors: " + std::to_string(theta * 180/3.1415) + " degrees" << std::endl;
 
-                    double avg_left_eye_horizontal_angle = shared_vars::left_eye_horizontal_angle_buffer_sum / shared_vars::left_eye_horizontal_angle_buffer.size();
-                    double avg_left_eye_vertical_angle = shared_vars::left_eye_vertical_angle_buffer_sum / shared_vars::left_eye_vertical_angle_buffer.size();
-                    double avg_right_eye_horizontal_angle = shared_vars::right_eye_horizontal_angle_buffer_sum / shared_vars::right_eye_horizontal_angle_buffer.size();
-                    double avg_right_eye_vertical_angle = shared_vars::right_eye_vertical_angle_buffer_sum / shared_vars::right_eye_vertical_angle_buffer.size();
-                    
+                float both_eye_distance = shared_vars::PUPILLARY_DISTANCE_INCHES/2.0/std::sin(theta/2);
 
-                    std::vector<double_t> message;
-                    message.push_back(avg_left_eye_horizontal_angle);
-                    message.push_back(avg_left_eye_vertical_angle);
-                    message.push_back(avg_right_eye_horizontal_angle);
-                    message.push_back(avg_right_eye_vertical_angle);
+                // Depth is z axis
+                // Derived from similar triangles
+                float l_3d_z = both_eye_distance / std::sqrt(std::pow(l_vector_x, 2) + 1);
+                float r_3d_z = both_eye_distance / std::sqrt(std::pow(r_vector_x, 2) + 1);
 
-                    try {
-                        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer(message));
-                    } catch (const boost::system::system_error& e) {
-                        if (e.code() == boost::asio::error::broken_pipe || 
-                            e.code() == boost::asio::error::connection_reset ||
-                            e.code() == boost::asio::error::eof) {
-                            std::cout << "Socket disconnected: " << e.what() << std::endl;
-                            shared_vars::is_renderer_active = false;
+                // Using eye coordinates, estimate eye positions in 3D space. Origin
+                // should be the center of the screen.
 
-                            g_application_quit(G_APPLICATION(shared_vars::app));
-                        }
-                    }
-                }
+                // From Chapter 43 of MIT Visionbook, equation 43.1, converting 2D
+                // homogenous point to 3D point is the formula
+                // depth for that pixel * inverse of intrinsic matrix * 2d point
+                //
+                // Axes are calculated correctly so that you can just plug the
+                // coords directly into Godot. Origin is the center of the scene.
+                // When facing the display, right is positive x, up is positive y,
+                // and out of the screen is positive z.
+                float l_3d_x = (0.5 - l_u)/parameters::camera_horizontal_intrinsic_parameter*l_3d_z;
+                float l_3d_y = (0.5 - l_v)/parameters::camera_vertical_intrinsic_parameter*l_3d_z;
+
+                float r_3d_x = (0.5 - r_u)/parameters::camera_horizontal_intrinsic_parameter*r_3d_z;
+                float r_3d_y = (0.5 - r_v)/parameters::camera_vertical_intrinsic_parameter*r_3d_z;
+
+                l_3d_y += parameters::camera_vertical_offset_inches;
+                r_3d_y += parameters::camera_vertical_offset_inches;
+
+                l_3d_x += parameters::camera_horizontal_offset_inches;
+                r_3d_x += parameters::camera_horizontal_offset_inches;
+
+                // std::cout << "Left eye position, inches: ("
+                //     + std::to_string(l_3d_x)  + ", " + std::to_string(l_3d_y) + ", " + std::to_string(l_3d_z)
+                //     + "). Right eye position, inches: ("
+                //     + std::to_string(r_3d_x)  + ", " + std::to_string(r_3d_y) + ", " + std::to_string(r_3d_z)
+                // + ")" << std::endl;
             }
         }
 
@@ -144,7 +141,7 @@ void request_cv_process_update() {
 
         
         if (shared_vars::webcam_paintable) {
-        g_object_unref(shared_vars::webcam_paintable);
+            g_object_unref(shared_vars::webcam_paintable);
         }
 
         // Update the shared paintable
@@ -155,8 +152,6 @@ void request_cv_process_update() {
 
         // Notify the main thread to update the UI
         shared_vars::webcam_dispatcher.emit();
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000/60));
     }
 }
 
@@ -181,7 +176,6 @@ static void
 activate (GtkApplication *app,
           void        *_)
 {
-    GtkCssProvider *css_provider;
     GError *error = NULL;
 
     // Create a builder and load the UI file
@@ -282,7 +276,6 @@ activate (GtkApplication *app,
 
 
     // Show the window
-
     gtk_window_present (GTK_WINDOW (shared_vars::main_window));
 
     // Start the renderer

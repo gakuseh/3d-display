@@ -20,6 +20,8 @@
 #include <queue>
 
 namespace shared_vars {
+    inline float PUPILLARY_DISTANCE_INCHES = 2.440945;
+
     extern GtkApplication* app;
     extern GtkWidget* main_window;
 

@@ -8,7 +8,7 @@ bool cv_actions::detect_face(
     std::tuple<float, float>& left_eye_uv,
     std::tuple<float, float>& right_eye_uv
 ) {
-    
+
     if (!cap.isOpened()) {
         return false; // Failed to open webcam
     }
@@ -29,7 +29,6 @@ bool cv_actions::detect_face(
         ); // Reset search bounds
         return false;
     }
-
 
     face_model_pointer->setInputSize(bounding_box.size());
 
