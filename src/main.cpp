@@ -197,19 +197,19 @@ activate (GtkApplication *app,
     shared_vars::main_window = GTK_WIDGET (gtk_builder_get_object (shared_vars::builder, "main_window"));
     gtk_window_set_application (GTK_WINDOW (shared_vars::main_window), app);
 
-    // Get the horizontal_displacement_diagram picture widget and set its file
-    if (GtkWidget *horizontal_displacement_diagram = GTK_WIDGET (gtk_builder_get_object (shared_vars::builder, "horizontal_displacement_diagram"))) {
-        GFile *image_file = g_file_new_for_path("horizontal-displacement-diagram.png");
-        gtk_picture_set_file(GTK_PICTURE(horizontal_displacement_diagram), image_file);
+    // Get the horizontal_offset_diagram picture widget and set its file
+    if (GtkWidget *horizontal_offset_diagram = GTK_WIDGET (gtk_builder_get_object (shared_vars::builder, "horizontal_offset_diagram"))) {
+        GFile *image_file = g_file_new_for_path("images/horizontal-offset-diagram.png");
+        gtk_picture_set_file(GTK_PICTURE(horizontal_offset_diagram), image_file);
         g_object_unref(image_file);
     } else {
         g_warning("Could not find diagram picture widget");
     }
 
-    // Get the vertical_displacement_diagram picture widget and set its file
-    if (GtkWidget *vertical_displacement_diagram = GTK_WIDGET (gtk_builder_get_object (shared_vars::builder, "vertical_displacement_diagram"))) {
-        GFile *image_file = g_file_new_for_path("vertical-displacement-diagram.png");
-        gtk_picture_set_file(GTK_PICTURE(vertical_displacement_diagram), image_file);
+    // Get the vertical_offset_diagram picture widget and set its file
+    if (GtkWidget *vertical_offset_diagram = GTK_WIDGET (gtk_builder_get_object (shared_vars::builder, "vertical_offset_diagram"))) {
+        GFile *image_file = g_file_new_for_path("images/vertical-offset-diagram.png");
+        gtk_picture_set_file(GTK_PICTURE(vertical_offset_diagram), image_file);
         g_object_unref(image_file);
     } else {
         g_warning("Could not find diagram picture widget");
@@ -245,7 +245,7 @@ activate (GtkApplication *app,
     shared_vars::cv_process_thread = std::thread(request_cv_process_update);
 
     // Get the CSS provider
-    css_provider = gtk_css_provider_new();
+    GtkCssProvider* css_provider = gtk_css_provider_new();
     gtk_css_provider_load_from_path(css_provider, "./ui/style.css");
 
     gtk_style_context_add_provider_for_display(gtk_widget_get_display(shared_vars::main_window),
