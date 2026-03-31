@@ -89,4 +89,5 @@ namespace parameters {
     extern float index_of_refraction;
     extern float camera_horizontal_offset_inches;
     extern float camera_vertical_offset_inches;
+    extern float display_density_ppi;
 }

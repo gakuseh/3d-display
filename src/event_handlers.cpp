@@ -98,11 +98,13 @@ void event_handlers::on_display_density_continue_clicked(GtkWidget *widget, gpoi
     message.push_back((int64_t)1);
     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer(message));
 
-    // Find pixels per lens, and send it to the 3D renderer
+    // Find pixels per lens and display density, and send it to the 3D renderer
     parameters::pixels_per_lens = 500.0 / working_parameters::green_to_red_line_distance / working_parameters::lenticule_density;
+    parameters::display_density_ppi = 500.0 / working_parameters::green_to_red_line_distance;
     std::cout << "Event handlers.cpp. Line 84. pixels_per_lens is " << parameters::pixels_per_lens << std::endl;
     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(int64_t)2}));
     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(float_t)parameters::pixels_per_lens}));
+    boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<float_t>(parameters::display_density_ppi)}));
 
     // Write all parameters to a save file
     std::ofstream save_file("calibration_settings.txt");
@@ -111,8 +113,9 @@ void event_handlers::on_display_density_continue_clicked(GtkWidget *widget, gpoi
         save_file << parameters::camera_vertical_intrinsic_parameter << std::endl;
         save_file << parameters::pixels_per_lens << std::endl;
         save_file << parameters::index_of_refraction << std::endl;
-        save_file << parameters::camera_horizontal_intrinsic_parameter << std::endl;
-        save_file << parameters::camera_vertical_intrinsic_parameter << std::endl;
+        save_file << parameters::camera_horizontal_offset_inches << std::endl;
+        save_file << parameters::camera_vertical_offset_inches << std::endl;
+        save_file << parameters::display_density_ppi << std::endl;
         save_file.close();
     }
 

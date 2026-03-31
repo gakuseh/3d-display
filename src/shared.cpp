@@ -75,6 +75,8 @@ void shared_vars::listen_for_renderer_socket_and_call_dispatcher() {
             parameters::camera_horizontal_offset_inches = std::stof(line);
             std::getline(save_file, line);
             parameters::camera_vertical_offset_inches = std::stof(line);
+            std::getline(save_file, line);
+            parameters::display_density_ppi = std::stof(line);
         } catch (const std::invalid_argument& e) {
             std::cerr << "Invalid settings file: " << e.what() << std::endl;
         }
@@ -84,6 +86,7 @@ void shared_vars::listen_for_renderer_socket_and_call_dispatcher() {
         // Send these settings to the renderer
         boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(int64_t)2}));
         boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(float_t)parameters::pixels_per_lens}));
+        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(float_t)parameters::display_density_ppi}));
     }
 }
 
@@ -102,4 +105,5 @@ namespace parameters {
     float index_of_refraction = 1.5;
     float camera_horizontal_offset_inches = 0;
     float camera_vertical_offset_inches = 0;
+    float display_density_ppi = 0;
 }
