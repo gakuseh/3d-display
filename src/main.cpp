@@ -135,7 +135,7 @@ void request_cv_process_update() {
 
 
                 if (shared_vars::is_renderer_active) {
-                    std::cout << "DEBUG: renderer is active" << std::endl;
+                    //std::cout << "DEBUG: renderer is active" << std::endl;
 
                     std::vector<int64_t> request_code;
                     request_code.push_back((int64_t)4);
