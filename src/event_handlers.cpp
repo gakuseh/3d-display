@@ -99,12 +99,10 @@ void event_handlers::on_display_density_continue_clicked(GtkWidget *widget, gpoi
     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer(message));
 
     // Find pixels per lens, and send it to the 3D renderer
-    // Also send the index of refraction
     parameters::pixels_per_lens = 500.0 / working_parameters::green_to_red_line_distance / working_parameters::lenticule_density;
     std::cout << "Event handlers.cpp. Line 84. pixels_per_lens is " << parameters::pixels_per_lens << std::endl;
     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(int64_t)2}));
     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(float_t)parameters::pixels_per_lens}));
-    boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(float_t)parameters::index_of_refraction}));
 
     // Write all parameters to a save file
     std::ofstream save_file("calibration_settings.txt");

@@ -84,7 +84,6 @@ void shared_vars::listen_for_renderer_socket_and_call_dispatcher() {
         // Send these settings to the renderer
         boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(int64_t)2}));
         boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(float_t)parameters::pixels_per_lens}));
-        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(float_t)parameters::index_of_refraction}));
     }
 }
 
