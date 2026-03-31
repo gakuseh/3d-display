@@ -118,6 +118,9 @@ void event_handlers::on_display_density_continue_clicked(GtkWidget *widget, gpoi
 
     // Switch to the horizontal offset calibration stack
     gtk_stack_set_visible_child_name(shared_vars::stack_widget, "horizontal_offset_calibration_box");
+
+    // Tell renderer to show offset calibration window
+    boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<int64_t>(7)}));
 }
 
 void event_handlers::on_horizontal_offset_continue_clicked(GtkWidget *widget, gpointer _)
@@ -158,6 +161,9 @@ void event_handlers::on_vertical_offset_continue_clicked(GtkWidget *widget, gpoi
 
     // Switch to the main menu
     gtk_stack_set_visible_child_name(shared_vars::stack_widget, "main_box");
+
+    // Tell renderer to HIDE offset calibration window
+    boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<int64_t>(8)}));
 }
 
 void on_new_object_selected(GObject* source_object, GAsyncResult* res, gpointer file_dialog_pointer) {
