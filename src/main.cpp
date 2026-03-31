@@ -62,8 +62,7 @@ void request_cv_process_update() {
             bool did_detect_face = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::webcam_capture, shared_vars::bounding_box, output_image, left_eye_uv, right_eye_uv);
 
             // If the face detection did not work, then continue onto next loop
-            if (did_detect_face)
-            {
+            if (did_detect_face) {
                 // std::cout << std::endl; //DEBUG
                 float l_u = std::get<0>(left_eye_uv);
                 float l_v = std::get<1>(left_eye_uv);
@@ -133,6 +132,29 @@ void request_cv_process_update() {
                 //     + "). Right eye position, inches: ("
                 //     + std::to_string(r_3d_x)  + ", " + std::to_string(r_3d_y) + ", " + std::to_string(r_3d_z)
                 // + ")" << std::endl;
+
+
+                if (shared_vars::is_renderer_active) {
+                    std::cout << "DEBUG: renderer is active" << std::endl;
+
+                    std::vector<int64_t> request_code;
+                    request_code.push_back((int64_t)4);
+
+                    try {
+                        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<int64_t>(4)}));
+                        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<float_t>(l_3d_x), static_cast<float_t>(l_3d_y), static_cast<float_t>(l_3d_z)}));
+                        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<float_t>(r_3d_x), static_cast<float_t>(r_3d_y), static_cast<float_t>(r_3d_z)}));
+                    } catch (const boost::system::system_error& e) {
+                        if (e.code() == boost::asio::error::broken_pipe ||
+                            e.code() == boost::asio::error::connection_reset ||
+                            e.code() == boost::asio::error::eof) {
+                            std::cout << "Socket disconnected: " << e.what() << std::endl;
+                            shared_vars::is_renderer_active = false;
+
+                            g_application_quit(G_APPLICATION(shared_vars::app));
+                        }
+                    }
+                }
             }
         }
 
