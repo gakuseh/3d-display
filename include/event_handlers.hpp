@@ -9,7 +9,7 @@
 #include "gtk_signal_data.hpp"
 #include "shared.hpp"
 
-const float QR_CODE_WIDTH_INCH = 6;
+const float QR_CODE_WIDTH_INCH = 4;
 
 namespace event_handlers {
     void on_calibrate_button_clicked (GtkWidget *widget, gpointer data);
