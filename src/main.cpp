@@ -291,7 +291,6 @@ activate (GtkApplication *app,
     // Set up the entry pointers
     shared_vars::qr_code_distance_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "qr_code_distance_entry"));
     shared_vars::lenticule_density_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "lenticule_density_entry"));
-    shared_vars::index_of_refraction_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "index_of_refraction_entry"));
     shared_vars::green_red_line_distance_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "green_red_line_distance_entry"));
     shared_vars::horizontal_offset_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "horizontal_offset_entry"));
     shared_vars::vertical_offset_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "vertical_offset_entry"));
