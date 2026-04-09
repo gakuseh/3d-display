@@ -44,18 +44,6 @@ void event_handlers::on_measurements_continue_clicked(GtkWidget *widget, gpointe
 
     if (!was_parse_successful) return;
 
-    // Get the index of refraction
-    std::string index_of_refraction_input(gtk_editable_get_chars(shared_vars::index_of_refraction_editable, 0, -1));
-    was_parse_successful = false;
-
-    try {
-        parameters::index_of_refraction = std::stof(index_of_refraction_input);
-        was_parse_successful = true;
-    } catch (const std::invalid_argument& e) {
-        std::cerr << "Invalid input for lenticule density: " << e.what() << std::endl;
-    }
-
-    if (!was_parse_successful) return;
 
     // Calculate intrinsic parameters
     parameters::camera_horizontal_intrinsic_parameter = working_parameters::qr_code_distance * working_parameters::qr_code_width_proportion / QR_CODE_WIDTH_INCH;
@@ -63,7 +51,6 @@ void event_handlers::on_measurements_continue_clicked(GtkWidget *widget, gpointe
 
     std::cout << "QR Code distance: " << working_parameters::qr_code_distance << " in." << std::endl; 
     std::cout << "Lenticule density: " << working_parameters::lenticule_density << " LPI" << std::endl;
-    std::cout << "Index of refraction: " << parameters::index_of_refraction << std::endl;
     std::cout << "Horizontal intrinsic parameter:" << parameters::camera_horizontal_intrinsic_parameter << std::endl;
     std::cout << "Vertical intrinsic parameter:" << parameters::camera_vertical_intrinsic_parameter << std::endl;
 
@@ -112,7 +99,6 @@ void event_handlers::on_display_density_continue_clicked(GtkWidget *widget, gpoi
         save_file << parameters::camera_horizontal_intrinsic_parameter << std::endl;
         save_file << parameters::camera_vertical_intrinsic_parameter << std::endl;
         save_file << parameters::pixels_per_lens << std::endl;
-        save_file << parameters::index_of_refraction << std::endl;
         save_file << parameters::camera_horizontal_offset_inches << std::endl;
         save_file << parameters::camera_vertical_offset_inches << std::endl;
         save_file << parameters::display_density_ppi << std::endl;

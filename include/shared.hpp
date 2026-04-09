@@ -43,7 +43,6 @@ namespace shared_vars {
     extern GtkEditable* qr_code_distance_editable;
     extern GtkEditable* lenticule_density_editable;
     extern GtkEditable* green_red_line_distance_editable;
-    extern GtkEditable* index_of_refraction_editable;
     extern GtkEditable* horizontal_offset_editable;
     extern GtkEditable* vertical_offset_editable;
 
@@ -86,7 +85,6 @@ namespace parameters {
     extern float camera_horizontal_intrinsic_parameter;
     extern float camera_vertical_intrinsic_parameter;
     extern float pixels_per_lens;
-    extern float index_of_refraction;
     extern float camera_horizontal_offset_inches;
     extern float camera_vertical_offset_inches;
     extern float display_density_ppi;
