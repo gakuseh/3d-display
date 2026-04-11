@@ -45,13 +45,18 @@ void request_cv_process_update() {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000/60));
 
         // Lock the mutex
-        shared_vars::webcam_paintable_mutex.lock();
+        shared_vars::main_webcam_paintable_mutex.lock();
 
-        cv::Mat output_image;
+        cv::Mat main_webcam_output_image;
+        cv::Mat second_webcam_output_image;
+
+        if (shared_vars::second_webcam_capture.isOpened()) {
+            shared_vars::second_webcam_capture >> second_webcam_output_image;
+        }
 
         if (!shared_vars::is_current_cv_action_face) { 
             // Do QR Code
-            cv_actions::detect_qr(shared_vars::webcam_capture, output_image, working_parameters::qr_code_width_proportion, working_parameters::qr_code_height_proportion);
+            cv_actions::detect_qr(shared_vars::main_webcam_capture, main_webcam_output_image, working_parameters::qr_code_width_proportion, working_parameters::qr_code_height_proportion);
             //std::cout << "DEBUG: QR COde width proportion, QR code height proportion: " + std::to_string(working_parameters::qr_code_width_proportion) + " " + std::to_string(working_parameters::qr_code_height_proportion) << std::endl;
         } else {
             // Get eye coordinates as pixels on the image. Coordinates should
@@ -59,7 +64,7 @@ void request_cv_process_update() {
             std::tuple<float, float> left_eye_uv;
             std::tuple<float, float> right_eye_uv;
 
-            bool did_detect_face = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::webcam_capture, shared_vars::bounding_box, output_image, left_eye_uv, right_eye_uv);
+            bool did_detect_face = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::main_webcam_capture, shared_vars::bounding_box, main_webcam_output_image, left_eye_uv, right_eye_uv);
 
             // If the face detection did not work, then continue onto next loop
             if (did_detect_face) {
@@ -159,18 +164,28 @@ void request_cv_process_update() {
         }
 
         // Convert to GdkPaintable
-        GdkPaintable* new_paintable = cv_mat_to_paintable(output_image);
-
+        GdkPaintable* new_main_webcam_paintable = cv_mat_to_paintable(main_webcam_output_image);
         
-        if (shared_vars::webcam_paintable) {
-            g_object_unref(shared_vars::webcam_paintable);
+        if (shared_vars::main_webcam_paintable) {
+            g_object_unref(shared_vars::main_webcam_paintable);
         }
 
         // Update the shared paintable
-        shared_vars::webcam_paintable = new_paintable;
+        shared_vars::main_webcam_paintable = new_main_webcam_paintable;
+
+        // Do the same thing if second webcam is online
+        if (shared_vars::second_webcam_capture.isOpened()) {
+            GdkPaintable* new_second_webcam_paintable = cv_mat_to_paintable(second_webcam_output_image);
+
+            if (shared_vars::second_webcam_paintable) {
+                g_object_unref(shared_vars::second_webcam_paintable);
+            }
+
+            shared_vars::second_webcam_paintable = new_second_webcam_paintable;
+        }
 
         // Unlock mutex
-        shared_vars::webcam_paintable_mutex.unlock();
+        shared_vars::main_webcam_paintable_mutex.unlock();
 
         // Notify the main thread to update the UI
         shared_vars::webcam_dispatcher.emit();
@@ -178,12 +193,18 @@ void request_cv_process_update() {
 }
 
 void handle_webcam_dispatch() {  
-    shared_vars::webcam_paintable_mutex.lock();
+    shared_vars::main_webcam_paintable_mutex.lock();
 
-    gtk_picture_set_paintable(shared_vars::main_webcam_image, shared_vars::webcam_paintable);
-    gtk_picture_set_paintable(shared_vars::fov_webcam_image, shared_vars::webcam_paintable);
+    gtk_picture_set_paintable(shared_vars::main_webcam_image, shared_vars::main_webcam_paintable);
 
-    shared_vars::webcam_paintable_mutex.unlock();
+    if (shared_vars::second_webcam_capture.isOpened()) {
+        gtk_picture_set_paintable(shared_vars::second_webcam_image, shared_vars::second_webcam_paintable);
+    }
+
+
+    gtk_picture_set_paintable(shared_vars::fov_webcam_image, shared_vars::main_webcam_paintable);
+
+    shared_vars::main_webcam_paintable_mutex.unlock();
 }
 
 // Signal handler for the button click
@@ -233,17 +254,25 @@ activate (GtkApplication *app,
 
     // Set up webcam image variables
     shared_vars::main_webcam_image = GTK_PICTURE(gtk_builder_get_object (shared_vars::builder, "main_webcam_image"));
+    shared_vars::second_webcam_image = GTK_PICTURE(gtk_builder_get_object (shared_vars::builder, "second_webcam_image"));
     shared_vars::fov_webcam_image = GTK_PICTURE(gtk_builder_get_object (shared_vars::builder, "fov_webcam_image"));
 
     // Set up video capture
-    shared_vars::webcam_capture.open(0);
-    if (!shared_vars::webcam_capture.isOpened()) {
+    shared_vars::main_webcam_capture.open(0);
+    if (!shared_vars::main_webcam_capture.isOpened()) {
         std::cerr << "Error: Could not open webcam." << std::endl;
+    }
+
+    // Check if second webcam is also available
+    shared_vars::second_webcam_capture.open(2);
+    if (shared_vars::second_webcam_capture.isOpened())
+    {
+        std::cout << "Second webcam detected" << std::endl;
     }
 
     // Get a frame and set up bounding box
     cv::Mat first_frame;
-    shared_vars::webcam_capture >> first_frame;
+    shared_vars::main_webcam_capture >> first_frame;
     if (first_frame.empty()) {
         std::cerr << "Error: Could not capture initial frame from webcam." << std::endl;
     } else {
@@ -321,7 +350,7 @@ static void deactivate(GtkApplication *app, void *data) {
     std::cout << "Thread ended" << std::endl;
 
     std::cout << "Releasing webcam" << std::endl;
-    shared_vars::webcam_capture.release();
+    shared_vars::main_webcam_capture.release();
 
     std::cout << "Tell renderer to quit" << std::endl;
 

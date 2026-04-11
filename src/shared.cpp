@@ -4,15 +4,17 @@ namespace shared_vars {
     GtkApplication* app = nullptr;
     GtkWidget* main_window = nullptr;
 
-    GdkPaintable* webcam_paintable = nullptr;
-
-    std::mutex webcam_paintable_mutex;
-    cv::VideoCapture webcam_capture;
+    GdkPaintable* main_webcam_paintable = nullptr;
+    GdkPaintable* second_webcam_paintable = nullptr;
+    std::mutex main_webcam_paintable_mutex;
+    cv::VideoCapture main_webcam_capture;
+    cv::VideoCapture second_webcam_capture;
     Glib::Dispatcher webcam_dispatcher;
     cv::Ptr<cv::FaceDetectorYN> face_detector_pointer;
     cv::Rect bounding_box(0, 0, 0, 0);
 
     GtkPicture* main_webcam_image = nullptr;
+    GtkPicture* second_webcam_image = nullptr;
     GtkPicture* fov_webcam_image = nullptr;
 
     GtkStack* stack_widget = nullptr;

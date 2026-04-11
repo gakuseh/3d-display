@@ -25,17 +25,19 @@ namespace shared_vars {
     extern GtkApplication* app;
     extern GtkWidget* main_window;
 
-    extern GdkPaintable* webcam_paintable;
-
     extern GtkBuilder *builder;
 
-    extern std::mutex webcam_paintable_mutex;
-    extern cv::VideoCapture webcam_capture;
+    extern GdkPaintable* main_webcam_paintable;
+    extern GdkPaintable* second_webcam_paintable;
+    extern std::mutex main_webcam_paintable_mutex;
+    extern cv::VideoCapture main_webcam_capture;
+    extern cv::VideoCapture second_webcam_capture;
     extern Glib::Dispatcher webcam_dispatcher;
     extern cv::Ptr<cv::FaceDetectorYN> face_detector_pointer;
     extern cv::Rect bounding_box;
 
     extern GtkPicture* main_webcam_image;
+    extern GtkPicture* second_webcam_image;
     extern GtkPicture* fov_webcam_image;
 
     extern GtkStack* stack_widget;
