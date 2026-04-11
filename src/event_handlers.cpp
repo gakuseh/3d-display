@@ -1,16 +1,44 @@
 #include "event_handlers.hpp"
 
-// Parameters used to calculate other final parameters
-// These do not need to be saved
+void save_parameters() {
+    // Write all parameters to a save file
+    std::ofstream save_file("calibration_settings.txt");
+    if (save_file.is_open()) {
+        save_file << parameters::main_camera_horizontal_intrinsic_parameter << std::endl;
+        save_file << parameters::main_camera_vertical_intrinsic_parameter << std::endl;
+        save_file << parameters::pixels_per_lens << std::endl;
+        save_file << parameters::main_camera_horizontal_offset_inches << std::endl;
+        save_file << parameters::main_camera_vertical_offset_inches << std::endl;
+        save_file << parameters::display_density_ppi << std::endl;
+        save_file << parameters::second_camera_horizontal_intrinsic_parameter << std::endl;
+        save_file << parameters::second_camera_vertical_intrinsic_parameter << std::endl;
+        save_file << parameters::second_camera_horizontal_offset_inches << std::endl;
+        save_file << parameters::second_camera_vertical_offset_inches << std::endl;
+        save_file.close();
+
+        std::cout << parameters::main_camera_horizontal_offset_inches << std::endl;
+        std::cout << parameters::main_camera_vertical_offset_inches << std::endl;
+        std::cout << parameters::second_camera_horizontal_offset_inches << std::endl;
+        std::cout << parameters::second_camera_vertical_offset_inches << std::endl;
+    }
+}
 
 void event_handlers::on_calibrate_button_clicked (GtkWidget *widget, gpointer _)
 {
     // Switch to the calibration stack first
     shared_vars::is_current_cv_action_face = false;
-    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "fov_calibration_box");
+    shared_vars::is_doing_second_camera_qr_calibration = false;
+    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "main_fov_calibration_box");
 }
 
-void event_handlers::on_fov_calibration_capture_clicked(GtkWidget *widget, gpointer _)
+void event_handlers::on_main_fov_calibration_capture_clicked(GtkWidget *widget, gpointer _)
+{
+    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "measurements_calibration_box");
+    shared_vars::is_current_cv_action_face = true;
+}
+
+
+void event_handlers::on_second_fov_calibration_capture_clicked(GtkWidget *widget, gpointer _)
 {
     gtk_stack_set_visible_child_name(shared_vars::stack_widget, "measurements_calibration_box");
     shared_vars::is_current_cv_action_face = true;
@@ -46,21 +74,54 @@ void event_handlers::on_measurements_continue_clicked(GtkWidget *widget, gpointe
 
 
     // Calculate intrinsic parameters
-    parameters::camera_horizontal_intrinsic_parameter = working_parameters::qr_code_distance * working_parameters::qr_code_width_proportion / QR_CODE_WIDTH_INCH;
-    parameters::camera_vertical_intrinsic_parameter = working_parameters::qr_code_distance * working_parameters::qr_code_height_proportion / QR_CODE_WIDTH_INCH;
+    float horizontal_intrinsic_parameter = working_parameters::qr_code_distance * working_parameters::qr_code_width_proportion / QR_CODE_WIDTH_INCH;
+    float vertical_intrinsic_parameter = working_parameters::qr_code_distance * working_parameters::qr_code_height_proportion / QR_CODE_WIDTH_INCH;
 
     std::cout << "QR Code distance: " << working_parameters::qr_code_distance << " in." << std::endl; 
     std::cout << "Lenticule density: " << working_parameters::lenticule_density << " LPI" << std::endl;
-    std::cout << "Horizontal intrinsic parameter:" << parameters::camera_horizontal_intrinsic_parameter << std::endl;
-    std::cout << "Vertical intrinsic parameter:" << parameters::camera_vertical_intrinsic_parameter << std::endl;
+    std::cout << "Horizontal intrinsic parameter:" << horizontal_intrinsic_parameter << std::endl;
+    std::cout << "Vertical intrinsic parameter:" << vertical_intrinsic_parameter << std::endl;
 
-    // Tell 3D renderer to display the measurement window
-    std::vector<int64_t> message;
-    message.push_back((int64_t)0);
-    boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer(message));
+    if (shared_vars::second_webcam_capture.isOpened()) {
+        // We have two webcams, so flow needs to be different.
+        // Flow will depend on if we are doing the first or second webcam
 
-    // Switch to display density
-    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "display_density_calibration_box");
+        if (!shared_vars::is_doing_second_camera_qr_calibration) {
+            // Just finished measurements for main camera, need to do
+            // measurements for second camera.
+            parameters::main_camera_horizontal_intrinsic_parameter = horizontal_intrinsic_parameter;
+            parameters::main_camera_vertical_intrinsic_parameter = vertical_intrinsic_parameter;
+
+            shared_vars::is_current_cv_action_face = false;
+            shared_vars::is_doing_second_camera_qr_calibration = true;
+            gtk_stack_set_visible_child_name(shared_vars::stack_widget, "second_fov_calibration_box");
+        } else {
+            // Just finished second camera, so move onto other calibration.
+            parameters::second_camera_horizontal_intrinsic_parameter = horizontal_intrinsic_parameter;
+            parameters::second_camera_vertical_intrinsic_parameter = vertical_intrinsic_parameter;
+
+            // Tell 3D renderer to display the measurement window
+            std::vector<int64_t> message;
+            message.push_back((int64_t)0);
+            boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer(message));
+
+            // Switch to display density
+            gtk_stack_set_visible_child_name(shared_vars::stack_widget, "display_density_calibration_box");
+        }
+    } else {
+        // Only one webcam, move onto next calibration
+
+        parameters::main_camera_horizontal_intrinsic_parameter = horizontal_intrinsic_parameter;
+        parameters::main_camera_vertical_intrinsic_parameter = vertical_intrinsic_parameter;
+
+        // Tell 3D renderer to display the measurement window
+        std::vector<int64_t> message;
+        message.push_back((int64_t)0);
+        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer(message));
+
+        // Switch to display density
+        gtk_stack_set_visible_child_name(shared_vars::stack_widget, "display_density_calibration_box");
+    }
 }
 
 void event_handlers::on_display_density_continue_clicked(GtkWidget *widget, gpointer _)
@@ -93,32 +154,20 @@ void event_handlers::on_display_density_continue_clicked(GtkWidget *widget, gpoi
     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({(float_t)parameters::pixels_per_lens}));
     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<float_t>(parameters::display_density_ppi)}));
 
-    // Write all parameters to a save file
-    std::ofstream save_file("calibration_settings.txt");
-    if (save_file.is_open()) {
-        save_file << parameters::camera_horizontal_intrinsic_parameter << std::endl;
-        save_file << parameters::camera_vertical_intrinsic_parameter << std::endl;
-        save_file << parameters::pixels_per_lens << std::endl;
-        save_file << parameters::camera_horizontal_offset_inches << std::endl;
-        save_file << parameters::camera_vertical_offset_inches << std::endl;
-        save_file << parameters::display_density_ppi << std::endl;
-        save_file.close();
-    }
-
     // Switch to the horizontal offset calibration stack
-    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "horizontal_offset_calibration_box");
+    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "main_horizontal_offset_calibration_box");
 
     // Tell renderer to show offset calibration window
     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<int64_t>(7)}));
 }
 
-void event_handlers::on_horizontal_offset_continue_clicked(GtkWidget *widget, gpointer _)
+void event_handlers::on_main_horizontal_offset_continue_clicked(GtkWidget *widget, gpointer _)
 {
-    std::string horizontal_offset_input(gtk_editable_get_chars(shared_vars::horizontal_offset_editable, 0, -1));
+    std::string horizontal_offset_input(gtk_editable_get_chars(shared_vars::main_horizontal_offset_editable, 0, -1));
     bool was_parse_successful = false;
 
     try {
-        parameters::camera_horizontal_offset_inches = std::stof(horizontal_offset_input);
+        parameters::main_camera_horizontal_offset_inches = std::stof(horizontal_offset_input);
         was_parse_successful = true;
     } catch (const std::invalid_argument& e) {
         std::cerr << "Invalid input for horizontal offset: " << e.what() << std::endl;
@@ -126,19 +175,19 @@ void event_handlers::on_horizontal_offset_continue_clicked(GtkWidget *widget, gp
 
     if (!was_parse_successful) return;
 
-    std::cout << "Horizontal offset: " << parameters::camera_horizontal_offset_inches << " in." << std::endl;
+    std::cout << "Horizontal offset: " << parameters::main_camera_horizontal_offset_inches << " in." << std::endl;
 
     // Switch to the vertical offset calibration stack
-    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "vertical_offset_calibration_box");
+    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "main_vertical_offset_calibration_box");
 }
 
-void event_handlers::on_vertical_offset_continue_clicked(GtkWidget *widget, gpointer _)
+void event_handlers::on_main_vertical_offset_continue_clicked(GtkWidget *widget, gpointer _)
 {
-    std::string vertical_offset_input(gtk_editable_get_chars(shared_vars::vertical_offset_editable, 0, -1));
+    std::string vertical_offset_input(gtk_editable_get_chars(shared_vars::main_vertical_offset_editable, 0, -1));
     bool was_parse_successful = false;
 
     try {
-        parameters::camera_vertical_offset_inches = std::stof(vertical_offset_input);
+        parameters::main_camera_vertical_offset_inches = std::stof(vertical_offset_input);
         was_parse_successful = true;
     } catch (const std::invalid_argument& e) {
         std::cerr << "Invalid input for vertical offset: " << e.what() << std::endl;
@@ -146,13 +195,70 @@ void event_handlers::on_vertical_offset_continue_clicked(GtkWidget *widget, gpoi
 
     if (!was_parse_successful) return;
 
-    std::cout << "vertical offset: " << parameters::camera_vertical_offset_inches << " in." << std::endl;
+    std::cout << "vertical offset: " << parameters::main_camera_vertical_offset_inches << " in." << std::endl;
 
-    // Switch to the main menu
-    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "main_box");
+
+    // Check if second webcam is connected. If so, calibrate the offset for that
+    if (shared_vars::second_webcam_capture.isOpened()) {
+        // Second webcam opened
+        gtk_stack_set_visible_child_name(shared_vars::stack_widget, "second_horizontal_offset_calibration_box");
+    }
+    else {
+        // Only one camera
+
+        gtk_stack_set_visible_child_name(shared_vars::stack_widget, "main_box");
+
+        // Tell renderer to HIDE offset calibration window
+        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<int64_t>(8)}));
+
+        save_parameters();
+    }
+}
+
+void event_handlers::on_second_horizontal_offset_continue_clicked(GtkWidget *widget, gpointer _)
+{
+    std::string horizontal_offset_input(gtk_editable_get_chars(shared_vars::second_horizontal_offset_editable, 0, -1));
+    bool was_parse_successful = false;
+
+    try {
+        parameters::second_camera_horizontal_offset_inches = std::stof(horizontal_offset_input);
+        was_parse_successful = true;
+    } catch (const std::invalid_argument& e) {
+        std::cerr << "Invalid input for horizontal offset: " << e.what() << std::endl;
+    }
+
+    if (!was_parse_successful) return;
+
+    std::cout << "SECOND CAMERA Horizontal offset: " << parameters::second_camera_horizontal_offset_inches << " in." << std::endl;
+
+    // Switch to the vertical offset calibration stack
+    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "second_vertical_offset_calibration_box");
+}
+
+void event_handlers::on_second_vertical_offset_continue_clicked(GtkWidget *widget, gpointer _)
+{
+    std::string vertical_offset_input(gtk_editable_get_chars(shared_vars::second_vertical_offset_editable, 0, -1));
+    bool was_parse_successful = false;
+
+    try {
+        parameters::second_camera_vertical_offset_inches = std::stof(vertical_offset_input);
+        was_parse_successful = true;
+    } catch (const std::invalid_argument& e) {
+        std::cerr << "Invalid input for vertical offset: " << e.what() << std::endl;
+    }
+
+    if (!was_parse_successful) return;
+
+    std::cout << "SECOND CAMERA Vertical offset: " << parameters::second_camera_vertical_offset_inches << " in." << std::endl;
+
+
 
     // Tell renderer to HIDE offset calibration window
     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<int64_t>(8)}));
+
+    save_parameters();
+
+    gtk_stack_set_visible_child_name(shared_vars::stack_widget, "main_box");
 }
 
 void on_new_object_selected(GObject* source_object, GAsyncResult* res, gpointer file_dialog_pointer) {

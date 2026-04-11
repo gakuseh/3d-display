@@ -38,18 +38,22 @@ namespace shared_vars {
 
     extern GtkPicture* main_webcam_image;
     extern GtkPicture* second_webcam_image;
-    extern GtkPicture* fov_webcam_image;
+    extern GtkPicture* main_fov_webcam_image;
+    extern GtkPicture* second_fov_webcam_image;
 
     extern GtkStack* stack_widget;
 
     extern GtkEditable* qr_code_distance_editable;
     extern GtkEditable* lenticule_density_editable;
     extern GtkEditable* green_red_line_distance_editable;
-    extern GtkEditable* horizontal_offset_editable;
-    extern GtkEditable* vertical_offset_editable;
+    extern GtkEditable* main_horizontal_offset_editable;
+    extern GtkEditable* main_vertical_offset_editable;
+    extern GtkEditable* second_horizontal_offset_editable;
+    extern GtkEditable* second_vertical_offset_editable;
 
     extern std::thread cv_process_thread;
     extern bool is_current_cv_action_face;
+    extern bool is_doing_second_camera_qr_calibration;
     extern std::atomic<bool> do_cv_thread_run;
 
     extern boost::asio::io_context io_context;
@@ -84,10 +88,14 @@ namespace working_parameters {
 }
 
 namespace parameters {
-    extern float camera_horizontal_intrinsic_parameter;
-    extern float camera_vertical_intrinsic_parameter;
+    extern float main_camera_horizontal_intrinsic_parameter;
+    extern float main_camera_vertical_intrinsic_parameter;
     extern float pixels_per_lens;
-    extern float camera_horizontal_offset_inches;
-    extern float camera_vertical_offset_inches;
+    extern float main_camera_horizontal_offset_inches;
+    extern float main_camera_vertical_offset_inches;
     extern float display_density_ppi;
+    extern float second_camera_horizontal_intrinsic_parameter;
+    extern float second_camera_vertical_intrinsic_parameter;
+    extern float second_camera_horizontal_offset_inches;
+    extern float second_camera_vertical_offset_inches;
 }

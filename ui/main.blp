@@ -103,7 +103,7 @@ Box main_box {
     }
 }
 
-Box fov_calibration_box {
+Box main_fov_calibration_box {
     orientation: vertical;
     spacing: 10;
     margin-start: 20;
@@ -125,11 +125,43 @@ Box fov_calibration_box {
     Box {
         orientation: vertical;
 
-        Picture fov_webcam_image { 
+        Picture main_fov_webcam_image {
         }
 
-        Button fov_calibration_capture_button{
-            name: "fov_calibration_capture_button";
+        Button main_fov_calibration_capture_button{
+            name: "main_fov_calibration_capture_button";
+            label: "Capture";
+        }
+    }
+}
+
+Box second_fov_calibration_box {
+    orientation: vertical;
+    spacing: 10;
+    margin-start: 20;
+    margin-end: 20;
+    margin-top: 20;
+    margin-bottom: 20;
+    valign: center;
+
+    Label {
+        name: "title_label";
+        label: "Field of View Calibration";
+        xalign: 0;
+    }
+
+    Separator {
+        orientation: horizontal;
+    }
+
+    Box {
+        orientation: vertical;
+
+        Picture second_fov_webcam_image {
+        }
+
+        Button second_fov_calibration_capture_button{
+            name: "second_fov_calibration_capture_button";
             label: "Capture";
         }
     }
@@ -264,7 +296,7 @@ Box display_density_calibration_box {
     }
 }
 
-Box horizontal_offset_calibration_box {
+Box main_horizontal_offset_calibration_box {
     orientation: vertical;
     spacing: 10;
     margin-start: 20;
@@ -299,7 +331,7 @@ Box horizontal_offset_calibration_box {
                 label: "Distance from green line to red line: ";
             }
 
-            Entry horizontal_offset_entry {
+            Entry main_horizontal_offset_entry {
                 placeholder-text: "Value in inches";
             }
 
@@ -309,7 +341,7 @@ Box horizontal_offset_calibration_box {
 
         }
 
-        Button horizontal_offset_continue_button {
+        Button main_horizontal_offset_continue_button {
             label: "Continue";
             halign: start;
         }
@@ -319,7 +351,7 @@ Box horizontal_offset_calibration_box {
     }
 }
 
-Box vertical_offset_calibration_box {
+Box main_vertical_offset_calibration_box {
     orientation: vertical;
     spacing: 10;
     margin-start: 20;
@@ -354,7 +386,7 @@ Box vertical_offset_calibration_box {
                 label: "Vertical offset: ";
             }
 
-            Entry vertical_offset_entry {
+            Entry main_vertical_offset_entry {
                 placeholder-text: "Value in inches";
             }
 
@@ -364,7 +396,7 @@ Box vertical_offset_calibration_box {
 
         }
 
-        Button vertical_offset_continue_button {
+        Button main_vertical_offset_continue_button {
             label: "Continue";
             halign: start;
         }
@@ -373,6 +405,111 @@ Box vertical_offset_calibration_box {
         }
     }
 }
+
+Box second_horizontal_offset_calibration_box {
+    orientation: vertical;
+    spacing: 10;
+    margin-start: 20;
+    margin-end: 20;
+    margin-top: 20;
+    margin-bottom: 20;
+
+    Label {
+        name: "title_label";
+        label: "Calibration: Horizontal offset for Second Camera";
+        xalign: 0;
+    }
+
+    Separator {
+        orientation: horizontal;
+    }
+
+    Box {
+        orientation: vertical;
+        spacing: 30;
+
+        Label {
+            label: "Look at the renderer window. Measure the horizontal distance between the center of the red dot on the renderer window. The green line in the diagram below represents the distance you need to measure.";
+            xalign: 0;
+            wrap: true;
+        }
+
+        Box {
+            orientation: horizontal;
+
+            Label {
+                label: "Distance from green line to red line: ";
+            }
+
+            Entry second_horizontal_offset_entry {
+                placeholder-text: "Value in inches";
+            }
+
+            Label {
+                label: " in.";
+            }
+
+        }
+
+        Button second_horizontal_offset_continue_button {
+            label: "Continue";
+            halign: start;
+        }
+    }
+}
+
+Box second_vertical_offset_calibration_box {
+    orientation: vertical;
+    spacing: 10;
+    margin-start: 20;
+    margin-end: 20;
+    margin-top: 20;
+    margin-bottom: 20;
+
+    Label {
+        name: "title_label";
+        label: "Calibration: Vertical offset for Second Camera";
+        xalign: 0;
+    }
+
+    Separator {
+        orientation: horizontal;
+    }
+
+    Box {
+        orientation: vertical;
+        spacing: 30;
+
+        Label {
+            label: "Look at the renderer window. Measure the vertical distance between the center of the red dot on the renderer window. The green line in the diagram below represents the distance you need to measure.";
+            xalign: 0;
+            wrap: true;
+        }
+
+        Box {
+            orientation: horizontal;
+
+            Label {
+                label: "Vertical offset: ";
+            }
+
+            Entry second_vertical_offset_entry {
+                placeholder-text: "Value in inches";
+            }
+
+            Label {
+                label: " in.";
+            }
+
+        }
+
+        Button second_vertical_offset_continue_button {
+            label: "Continue";
+            halign: start;
+        }
+    }
+}
+
 
 Window main_window {
     title: "3D Display Control Panel";
@@ -389,9 +526,15 @@ Window main_window {
         }        
 
         StackPage {
-            name: "fov_calibration_box";
+            name: "main_fov_calibration_box";
             title: "Calibration";
-            child : fov_calibration_box;
+            child : main_fov_calibration_box;
+        }
+
+        StackPage {
+            name: "second_fov_calibration_box";
+            title: "Calibration";
+            child : second_fov_calibration_box;
         }
 
         StackPage {
@@ -407,15 +550,27 @@ Window main_window {
         }
 
         StackPage {
-            name: "horizontal_offset_calibration_box";
-            title: "horizontal_offset_calibration_box";
-            child: horizontal_offset_calibration_box;
+            name: "main_horizontal_offset_calibration_box";
+            title: "main_horizontal_offset_calibration_box";
+            child: main_horizontal_offset_calibration_box;
         }
 
         StackPage {
-            name: "vertical_offset_calibration_box";
-            title: "vertical_offset_calibration_box";
-            child: vertical_offset_calibration_box;
+            name: "main_vertical_offset_calibration_box";
+            title: "main_vertical_offset_calibration_box";
+            child: main_vertical_offset_calibration_box;
+        }
+
+        StackPage {
+            name: "second_horizontal_offset_calibration_box";
+            title: "second_horizontal_offset_calibration_box";
+            child: second_horizontal_offset_calibration_box;
+        }
+
+        StackPage {
+            name: "second_vertical_offset_calibration_box";
+            title: "second_vertical_offset_calibration_box";
+            child: second_vertical_offset_calibration_box;
         }
         
     }

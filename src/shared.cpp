@@ -15,18 +15,23 @@ namespace shared_vars {
 
     GtkPicture* main_webcam_image = nullptr;
     GtkPicture* second_webcam_image = nullptr;
-    GtkPicture* fov_webcam_image = nullptr;
+    GtkPicture* main_fov_webcam_image = nullptr;
+    GtkPicture* second_fov_webcam_image = nullptr;
 
     GtkStack* stack_widget = nullptr;
 
     GtkEditable* qr_code_distance_editable = nullptr;
     GtkEditable* lenticule_density_editable = nullptr;
     GtkEditable* green_red_line_distance_editable = nullptr;
-    GtkEditable* horizontal_offset_editable = nullptr;
-    GtkEditable* vertical_offset_editable = nullptr;
+    GtkEditable* main_horizontal_offset_editable = nullptr;
+    GtkEditable* main_vertical_offset_editable = nullptr;
+    GtkEditable* second_horizontal_offset_editable = nullptr;
+    GtkEditable* second_vertical_offset_editable = nullptr;
+
 
     std::thread cv_process_thread;
     bool is_current_cv_action_face = true;
+    bool is_doing_second_camera_qr_calibration = false;
     std::atomic<bool> do_cv_thread_run{true};
 
     boost::asio::io_context io_context;
@@ -65,17 +70,29 @@ void shared_vars::listen_for_renderer_socket_and_call_dispatcher() {
         
         try {
             std::getline(save_file, line);
-            parameters::camera_horizontal_intrinsic_parameter = std::stof(line);
+            parameters::main_camera_horizontal_intrinsic_parameter = std::stof(line);
             std::getline(save_file, line);
-            parameters::camera_vertical_intrinsic_parameter = std::stof(line);
+            parameters::main_camera_vertical_intrinsic_parameter = std::stof(line);
             std::getline(save_file, line);
             parameters::pixels_per_lens = std::stof(line);
             std::getline(save_file, line);
-            parameters::camera_horizontal_offset_inches = std::stof(line);
+            parameters::main_camera_horizontal_offset_inches = std::stof(line);
             std::getline(save_file, line);
-            parameters::camera_vertical_offset_inches = std::stof(line);
+            parameters::main_camera_vertical_offset_inches = std::stof(line);
             std::getline(save_file, line);
             parameters::display_density_ppi = std::stof(line);
+
+            std::getline(save_file, line);
+            parameters::second_camera_horizontal_intrinsic_parameter = std::stof(line);
+
+            std::getline(save_file, line);
+            parameters::second_camera_vertical_intrinsic_parameter = std::stof(line);
+
+            std::getline(save_file, line);
+            parameters::second_camera_horizontal_offset_inches = std::stof(line);
+
+            std::getline(save_file, line);
+            parameters::second_camera_vertical_offset_inches = std::stof(line);
         } catch (const std::invalid_argument& e) {
             std::cerr << "Invalid settings file: " << e.what() << std::endl;
         }
@@ -98,10 +115,14 @@ namespace working_parameters {
 }
 
 namespace parameters {
-    float camera_horizontal_intrinsic_parameter = 0;
-    float camera_vertical_intrinsic_parameter = 0;
+    float main_camera_horizontal_intrinsic_parameter = 0;
+    float main_camera_vertical_intrinsic_parameter = 0;
     float pixels_per_lens = 0;
-    float camera_horizontal_offset_inches = 0;
-    float camera_vertical_offset_inches = 0;
+    float main_camera_horizontal_offset_inches = 0;
+    float main_camera_vertical_offset_inches = 0;
     float display_density_ppi = 0;
+    float second_camera_horizontal_intrinsic_parameter = 0;
+    float second_camera_vertical_intrinsic_parameter = 0;
+    float second_camera_horizontal_offset_inches = 0;
+    float second_camera_vertical_offset_inches = 0;
 }

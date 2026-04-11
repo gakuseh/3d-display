@@ -50,15 +50,20 @@ void request_cv_process_update() {
         cv::Mat main_webcam_output_image;
         cv::Mat second_webcam_output_image;
 
-        if (shared_vars::second_webcam_capture.isOpened()) {
-            shared_vars::second_webcam_capture >> second_webcam_output_image;
-        }
-
         if (!shared_vars::is_current_cv_action_face) { 
             // Do QR Code
-            cv_actions::detect_qr(shared_vars::main_webcam_capture, main_webcam_output_image, working_parameters::qr_code_width_proportion, working_parameters::qr_code_height_proportion);
+
+            if (!shared_vars::is_doing_second_camera_qr_calibration) {
+                cv_actions::detect_qr(shared_vars::main_webcam_capture, main_webcam_output_image, working_parameters::qr_code_width_proportion, working_parameters::qr_code_height_proportion);
+            } else {
+                cv_actions::detect_qr(shared_vars::second_webcam_capture, second_webcam_output_image, working_parameters::qr_code_width_proportion, working_parameters::qr_code_height_proportion);
+            }
             //std::cout << "DEBUG: QR COde width proportion, QR code height proportion: " + std::to_string(working_parameters::qr_code_width_proportion) + " " + std::to_string(working_parameters::qr_code_height_proportion) << std::endl;
         } else {
+            if (shared_vars::second_webcam_capture.isOpened()) {
+                shared_vars::second_webcam_capture >> second_webcam_output_image;
+            }
+
             // Get eye coordinates as pixels on the image. Coordinates should
             // have the origin in the top left of the image.
             std::tuple<float, float> left_eye_uv;
@@ -80,13 +85,13 @@ void request_cv_process_update() {
                 // Calculate left eye and right eye depth
 
                 // Vectors pointing to left and right eyes
-                float l_vector_x = (0.5 - l_u)/parameters::camera_horizontal_intrinsic_parameter;
-                float l_vector_y = (0.5 - l_v)/parameters::camera_vertical_intrinsic_parameter;
+                float l_vector_x = (0.5 - l_u)/parameters::main_camera_horizontal_intrinsic_parameter;
+                float l_vector_y = (0.5 - l_v)/parameters::main_camera_vertical_intrinsic_parameter;
                 float l_vector_z = 1;
                 float l_vector_mag = static_cast<float>(std::sqrt(std::pow(l_vector_x, 2) + std::pow(l_vector_y, 2) + std::pow(l_vector_z, 2)));
 
-                float r_vector_x = (0.5 - r_u)/parameters::camera_horizontal_intrinsic_parameter;
-                float r_vector_y = (0.5 - r_v)/parameters::camera_vertical_intrinsic_parameter;
+                float r_vector_x = (0.5 - r_u)/parameters::main_camera_horizontal_intrinsic_parameter;
+                float r_vector_y = (0.5 - r_v)/parameters::main_camera_vertical_intrinsic_parameter;
                 float r_vector_z = 1;
                 float r_vector_mag = static_cast<float>(std::sqrt(std::pow(r_vector_x, 2) + std::pow(r_vector_y, 2) + std::pow(r_vector_z, 2)));
 
@@ -120,17 +125,17 @@ void request_cv_process_update() {
                 // coords directly into Godot. Origin is the center of the scene.
                 // When facing the display, right is positive x, up is positive y,
                 // and out of the screen is positive z.
-                float l_3d_x = (0.5 - l_u)/parameters::camera_horizontal_intrinsic_parameter*l_3d_z;
-                float l_3d_y = (0.5 - l_v)/parameters::camera_vertical_intrinsic_parameter*l_3d_z;
+                float l_3d_x = (0.5 - l_u)/parameters::main_camera_horizontal_intrinsic_parameter*l_3d_z;
+                float l_3d_y = (0.5 - l_v)/parameters::main_camera_vertical_intrinsic_parameter*l_3d_z;
 
-                float r_3d_x = (0.5 - r_u)/parameters::camera_horizontal_intrinsic_parameter*r_3d_z;
-                float r_3d_y = (0.5 - r_v)/parameters::camera_vertical_intrinsic_parameter*r_3d_z;
+                float r_3d_x = (0.5 - r_u)/parameters::main_camera_horizontal_intrinsic_parameter*r_3d_z;
+                float r_3d_y = (0.5 - r_v)/parameters::main_camera_vertical_intrinsic_parameter*r_3d_z;
 
-                l_3d_y += parameters::camera_vertical_offset_inches;
-                r_3d_y += parameters::camera_vertical_offset_inches;
+                l_3d_y += parameters::main_camera_vertical_offset_inches;
+                r_3d_y += parameters::main_camera_vertical_offset_inches;
 
-                l_3d_x += parameters::camera_horizontal_offset_inches;
-                r_3d_x += parameters::camera_horizontal_offset_inches;
+                l_3d_x += parameters::main_camera_horizontal_offset_inches;
+                r_3d_x += parameters::main_camera_horizontal_offset_inches;
 
                 // std::cout << "Left eye position, inches: ("
                 //     + std::to_string(l_3d_x)  + ", " + std::to_string(l_3d_y) + ", " + std::to_string(l_3d_z)
@@ -163,18 +168,19 @@ void request_cv_process_update() {
             }
         }
 
-        // Convert to GdkPaintable
-        GdkPaintable* new_main_webcam_paintable = cv_mat_to_paintable(main_webcam_output_image);
-        
-        if (shared_vars::main_webcam_paintable) {
-            g_object_unref(shared_vars::main_webcam_paintable);
+
+        if (!main_webcam_output_image.empty()) {
+            GdkPaintable* new_main_webcam_paintable = cv_mat_to_paintable(main_webcam_output_image);
+
+            if (shared_vars::main_webcam_paintable) {
+                g_object_unref(shared_vars::main_webcam_paintable);
+            }
+
+            shared_vars::main_webcam_paintable = new_main_webcam_paintable;
         }
 
-        // Update the shared paintable
-        shared_vars::main_webcam_paintable = new_main_webcam_paintable;
-
         // Do the same thing if second webcam is online
-        if (shared_vars::second_webcam_capture.isOpened()) {
+        if (!second_webcam_output_image.empty()) {
             GdkPaintable* new_second_webcam_paintable = cv_mat_to_paintable(second_webcam_output_image);
 
             if (shared_vars::second_webcam_paintable) {
@@ -201,8 +207,10 @@ void handle_webcam_dispatch() {
         gtk_picture_set_paintable(shared_vars::second_webcam_image, shared_vars::second_webcam_paintable);
     }
 
-
-    gtk_picture_set_paintable(shared_vars::fov_webcam_image, shared_vars::main_webcam_paintable);
+    if (!shared_vars::is_current_cv_action_face) {
+        gtk_picture_set_paintable(shared_vars::main_fov_webcam_image, shared_vars::main_webcam_paintable);
+        gtk_picture_set_paintable(shared_vars::second_fov_webcam_image, shared_vars::second_webcam_paintable);
+    }
 
     shared_vars::main_webcam_paintable_mutex.unlock();
 }
@@ -255,7 +263,8 @@ activate (GtkApplication *app,
     // Set up webcam image variables
     shared_vars::main_webcam_image = GTK_PICTURE(gtk_builder_get_object (shared_vars::builder, "main_webcam_image"));
     shared_vars::second_webcam_image = GTK_PICTURE(gtk_builder_get_object (shared_vars::builder, "second_webcam_image"));
-    shared_vars::fov_webcam_image = GTK_PICTURE(gtk_builder_get_object (shared_vars::builder, "fov_webcam_image"));
+    shared_vars::main_fov_webcam_image = GTK_PICTURE(gtk_builder_get_object (shared_vars::builder, "main_fov_webcam_image"));
+    shared_vars::second_fov_webcam_image = GTK_PICTURE(gtk_builder_get_object (shared_vars::builder, "second_fov_webcam_image"));
 
     // Set up video capture
     shared_vars::main_webcam_capture.open(0);
@@ -302,27 +311,35 @@ activate (GtkApplication *app,
 
     // Connect signal for buttons
     GtkWidget *calibrate_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "calibrate_button"));
-    GtkWidget *fov_calibration_capture_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "fov_calibration_capture_button"));
+    GtkWidget *main_fov_calibration_capture_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "main_fov_calibration_capture_button"));
+    GtkWidget *second_fov_calibration_capture_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "second_fov_calibration_capture_button"));
     GtkWidget *display_density_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "display_density_continue_button"));
     GtkWidget *measurements_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "measurements_continue_button"));
     GtkWidget *change_object_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "change_button"));
-    GtkWidget *horizontal_offset_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "horizontal_offset_continue_button"));
-    GtkWidget *vertical_offset_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "vertical_offset_continue_button"));
+    GtkWidget *main_horizontal_offset_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "main_horizontal_offset_continue_button"));
+    GtkWidget *main_vertical_offset_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "main_vertical_offset_continue_button"));
+    GtkWidget *second_horizontal_offset_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "second_horizontal_offset_continue_button"));
+    GtkWidget *second_vertical_offset_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "second_vertical_offset_continue_button"));
 
     g_signal_connect(calibrate_button, "clicked", G_CALLBACK(event_handlers::on_calibrate_button_clicked), NULL);
-    g_signal_connect(fov_calibration_capture_button, "clicked", G_CALLBACK(event_handlers::on_fov_calibration_capture_clicked), NULL);
+    g_signal_connect(main_fov_calibration_capture_button, "clicked", G_CALLBACK(event_handlers::on_main_fov_calibration_capture_clicked), NULL);
+    g_signal_connect(second_fov_calibration_capture_button, "clicked", G_CALLBACK(event_handlers::on_second_fov_calibration_capture_clicked), NULL);
     g_signal_connect(display_density_continue_button, "clicked", G_CALLBACK(event_handlers::on_display_density_continue_clicked), NULL);
     g_signal_connect(measurements_continue_button, "clicked", G_CALLBACK(event_handlers::on_measurements_continue_clicked), NULL);
     g_signal_connect(change_object_button, "clicked", G_CALLBACK(event_handlers::on_change_object_clicked), NULL);
-    g_signal_connect(horizontal_offset_continue_button, "clicked", G_CALLBACK(event_handlers::on_horizontal_offset_continue_clicked), NULL);
-    g_signal_connect(vertical_offset_continue_button, "clicked", G_CALLBACK(event_handlers::on_vertical_offset_continue_clicked), NULL);
+    g_signal_connect(main_horizontal_offset_continue_button, "clicked", G_CALLBACK(event_handlers::on_main_horizontal_offset_continue_clicked), NULL);
+    g_signal_connect(main_vertical_offset_continue_button, "clicked", G_CALLBACK(event_handlers::on_main_vertical_offset_continue_clicked), NULL);
+    g_signal_connect(second_horizontal_offset_continue_button, "clicked", G_CALLBACK(event_handlers::on_second_horizontal_offset_continue_clicked), NULL);
+    g_signal_connect(second_vertical_offset_continue_button, "clicked", G_CALLBACK(event_handlers::on_second_vertical_offset_continue_clicked), NULL);
 
-    // Set up the entry pointers
+    // Set up the editable pointers
     shared_vars::qr_code_distance_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "qr_code_distance_entry"));
     shared_vars::lenticule_density_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "lenticule_density_entry"));
     shared_vars::green_red_line_distance_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "green_red_line_distance_entry"));
-    shared_vars::horizontal_offset_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "horizontal_offset_entry"));
-    shared_vars::vertical_offset_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "vertical_offset_entry"));
+    shared_vars::main_horizontal_offset_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "main_horizontal_offset_entry"));
+    shared_vars::main_vertical_offset_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "main_vertical_offset_entry"));
+    shared_vars::second_horizontal_offset_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "second_horizontal_offset_entry"));
+    shared_vars::second_vertical_offset_editable = GTK_EDITABLE(gtk_builder_get_object(shared_vars::builder, "second_vertical_offset_entry"));
 
 
     // Show the window
