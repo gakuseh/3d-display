@@ -14,12 +14,8 @@ void save_parameters() {
         save_file << parameters::second_camera_vertical_intrinsic_parameter << std::endl;
         save_file << parameters::second_camera_horizontal_offset_inches << std::endl;
         save_file << parameters::second_camera_vertical_offset_inches << std::endl;
-        save_file.close();
 
-        std::cout << parameters::main_camera_horizontal_offset_inches << std::endl;
-        std::cout << parameters::main_camera_vertical_offset_inches << std::endl;
-        std::cout << parameters::second_camera_horizontal_offset_inches << std::endl;
-        std::cout << parameters::second_camera_vertical_offset_inches << std::endl;
+        save_file.close();
     }
 }
 

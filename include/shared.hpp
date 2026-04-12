@@ -34,7 +34,8 @@ namespace shared_vars {
     extern cv::VideoCapture second_webcam_capture;
     extern Glib::Dispatcher webcam_dispatcher;
     extern cv::Ptr<cv::FaceDetectorYN> face_detector_pointer;
-    extern cv::Rect bounding_box;
+    extern cv::Rect main_bounding_box;
+    extern cv::Rect second_bounding_box;
 
     extern GtkPicture* main_webcam_image;
     extern GtkPicture* second_webcam_image;

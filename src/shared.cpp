@@ -11,7 +11,8 @@ namespace shared_vars {
     cv::VideoCapture second_webcam_capture;
     Glib::Dispatcher webcam_dispatcher;
     cv::Ptr<cv::FaceDetectorYN> face_detector_pointer;
-    cv::Rect bounding_box(0, 0, 0, 0);
+    cv::Rect main_bounding_box(0, 0, 0, 0);
+    cv::Rect second_bounding_box(0, 0, 0, 0);
 
     GtkPicture* main_webcam_image = nullptr;
     GtkPicture* second_webcam_image = nullptr;

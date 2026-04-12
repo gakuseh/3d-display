@@ -2,6 +2,7 @@
 #include <thread>
 #include <chrono>
 #include <mutex>
+#include <cmath>
 
 #include <boost/asio.hpp>
 
@@ -40,6 +41,195 @@ GdkPaintable* cv_mat_to_paintable(const cv::Mat& mat) {
     return paintable;
 }
 
+void get_3d_coordinates_single_camera(
+    const std::tuple<float, float>& left_eye_uv,
+    const std::tuple<float, float>& right_eye_uv,
+    std::tuple<float, float, float>& left_eye_position_out,
+    std::tuple<float, float, float>& right_eye_position_out
+    )
+{
+    float l_u = std::get<0>(left_eye_uv);
+    float l_v = std::get<1>(left_eye_uv);
+
+    float r_u = std::get<0>(right_eye_uv);
+    float r_v = std::get<1>(right_eye_uv);
+
+    //std::cout << std::string("DEBUG: Left UV: ") + "(" + std::to_string(l_u) + ", " + std::to_string(l_v) + ")" + "Right UV: " + "(" + std::to_string(r_u) + ", " + std::to_string(r_v) + ")" << std::endl;
+
+    // Calculate left eye and right eye depth
+
+    // Vectors pointing to left and right eyes
+    float l_vector_x = (0.5 - l_u)/parameters::main_camera_horizontal_intrinsic_parameter;
+    float l_vector_y = (0.5 - l_v)/parameters::main_camera_vertical_intrinsic_parameter;
+    float l_vector_z = 1;
+    float l_vector_mag = static_cast<float>(std::sqrt(std::pow(l_vector_x, 2) + std::pow(l_vector_y, 2) + std::pow(l_vector_z, 2)));
+
+    float r_vector_x = (0.5 - r_u)/parameters::main_camera_horizontal_intrinsic_parameter;
+    float r_vector_y = (0.5 - r_v)/parameters::main_camera_vertical_intrinsic_parameter;
+    float r_vector_z = 1;
+    float r_vector_mag = static_cast<float>(std::sqrt(std::pow(r_vector_x, 2) + std::pow(r_vector_y, 2) + std::pow(r_vector_z, 2)));
+
+    // Angle between the left and right vectors
+    float cosine_theta = (l_vector_x * r_vector_x + l_vector_y * r_vector_y + l_vector_z * r_vector_z)/(l_vector_mag * r_vector_mag);
+    float theta = std::acos(cosine_theta);
+
+    // std::cout << "DEBUG: Horizontal intrinsic parameter " << std::to_string(parameters::camera_horizontal_intrinsic_parameter) << std::endl;
+    // std::cout << "DEBUG: Vertical intrinsic parameter " << std::to_string(parameters::camera_vertical_intrinsic_parameter) << std::endl;
+    // std::cout << std::string("DEBUG: Left Vector: ") + "(" + std::to_string(l_vector_x) + ", " + std::to_string(l_vector_y) + ", " + std::to_string(l_vector_z) + ")";
+    // std::cout << std::string(" Right Vector: ") + "(" + std::to_string(r_vector_x) + ", " + std::to_string(r_vector_y) + ", " + std::to_string(r_vector_z)+ ")" << std::endl;
+    //
+    // std::cout << "DEBUG: Distance between two eyes, UV: " + std::to_string(std::sqrt(std::pow(l_u - r_u, 2) + std::pow(l_v - r_v, 2))) << std::endl;
+    // std::cout << "DEBUG: Angle between left and right vectors: " + std::to_string(theta * 180/3.1415) + " degrees" << std::endl;
+
+    float both_eye_distance = shared_vars::PUPILLARY_DISTANCE_INCHES/2.0/std::sin(theta/2);
+
+    // Depth is z axis
+    // Derived from similar triangles
+    float l_3d_z = both_eye_distance / std::sqrt(std::pow(l_vector_x, 2) + 1);
+    float r_3d_z = both_eye_distance / std::sqrt(std::pow(r_vector_x, 2) + 1);
+
+    // Using eye coordinates, estimate eye positions in 3D space. Origin
+    // should be the center of the screen.
+
+    // From Chapter 43 of MIT Visionbook, equation 43.1, converting 2D
+    // homogenous point to 3D point is the formula
+    // depth for that pixel * inverse of intrinsic matrix * 2d point
+    //
+    // Axes are calculated correctly so that you can just plug the
+    // coords directly into Godot. Origin is the center of the scene.
+    // When facing the display, right is positive x, up is positive y,
+    // and out of the screen is positive z.
+    float l_3d_x = (0.5 - l_u)/parameters::main_camera_horizontal_intrinsic_parameter*l_3d_z;
+    float l_3d_y = (0.5 - l_v)/parameters::main_camera_vertical_intrinsic_parameter*l_3d_z;
+
+    float r_3d_x = (0.5 - r_u)/parameters::main_camera_horizontal_intrinsic_parameter*r_3d_z;
+    float r_3d_y = (0.5 - r_v)/parameters::main_camera_vertical_intrinsic_parameter*r_3d_z;
+
+    l_3d_y += parameters::main_camera_vertical_offset_inches;
+    r_3d_y += parameters::main_camera_vertical_offset_inches;
+
+    l_3d_x += parameters::main_camera_horizontal_offset_inches;
+    r_3d_x += parameters::main_camera_horizontal_offset_inches;
+
+    // std::cout << "Left eye position, inches: ("
+    //     + std::to_string(l_3d_x)  + ", " + std::to_string(l_3d_y) + ", " + std::to_string(l_3d_z)
+    //     + "). Right eye position, inches: ("
+    //     + std::to_string(r_3d_x)  + ", " + std::to_string(r_3d_y) + ", " + std::to_string(r_3d_z)
+    // + ")" << std::endl;
+
+    left_eye_position_out = std::tuple<float, float, float>(l_3d_x, l_3d_y, l_3d_z);
+    right_eye_position_out = std::tuple<float, float, float>(r_3d_x, r_3d_y, r_3d_z);
+}
+
+void get_closest_point_from_two_lines(
+    const std::tuple<float, float, float>& main_vector,
+    const std::tuple<float, float, float>& main_camera_position,
+    const std::tuple<float, float, float>& second_vector,
+    const std::tuple<float, float, float>& second_camera_position,
+    std::tuple<float, float, float>& closest_point)
+{
+    float main_x = std::get<0>(main_vector);
+    float main_y = std::get<1>(main_vector);
+    float main_z = std::get<2>(main_vector);
+
+    float main_origin_x = std::get<0>(main_camera_position);
+    float main_origin_y = std::get<1>(main_camera_position);
+    float main_origin_z = std::get<2>(main_camera_position);
+
+    float second_x = std::get<0>(second_vector);
+    float second_y = std::get<1>(second_vector);
+    float second_z = std::get<2>(second_vector);
+
+    float second_origin_x = std::get<0>(second_camera_position);
+    float second_origin_y = std::get<1>(second_camera_position);
+    float second_origin_z = std::get<2>(second_camera_position);
+
+    float wx = main_origin_x - second_origin_x;
+    float wy = main_origin_y - second_origin_y;
+    float wz = main_origin_z - second_origin_z;
+
+    float a = main_x*main_x   + main_y*main_y   + main_z*main_z;
+    float b = main_x*second_x + main_y*second_y + main_z*second_z;
+    float c = second_x*second_x + second_y*second_y + second_z*second_z;
+    float d = main_x*wx + main_y*wy + main_z*wz;
+    float e = second_x*wx + second_y*wy + second_z*wz;
+
+    float t = (b*e - c*d) / (a*c - b*b);
+    float s = (a*e - b*d) / (a*c - b*b);
+
+    float closest_main_x = main_origin_x + t * main_x;
+    float closest_main_y = main_origin_y + t * main_y;
+    float closest_main_z = main_origin_z + t * main_z;
+
+    float closest_second_x = second_origin_x + s * second_x;
+    float closest_second_y = second_origin_y + s * second_y;
+    float closest_second_z = second_origin_z + s * second_z;
+
+    closest_point = std::tuple<float, float, float>((closest_main_x+closest_second_x)/2.0, (closest_main_y+closest_second_y)/2.0, (closest_main_z+closest_second_z)/2.0);
+}
+
+void get_3d_coordinates_two_cameras(
+    const std::tuple<float, float>& main_left_eye_uv,
+    const std::tuple<float, float>& main_right_eye_uv,
+    const std::tuple<float, float>& second_left_eye_uv,
+    const std::tuple<float, float>& second_right_eye_uv,
+    const std::tuple<float, float, float>& main_camera_position,
+    const std::tuple<float, float, float>& second_camera_position,
+    const float main_camera_horizontal_intrinsic_parameter,
+    const float main_camera_vertical_intrinsic_parameter,
+    const float second_camera_horizontal_intrinsic_parameter,
+    const float second_camera_vertical_intrinsic_parameter,
+    std::tuple<float, float, float>& left_eye_position_out,
+    std::tuple<float, float, float>& right_eye_position_out
+    ) {
+
+    float main_l_u = std::get<0>(main_left_eye_uv);
+    float main_l_v = std::get<1>(main_left_eye_uv);
+    auto main_left_vector_x = (0.5 - main_l_u)/main_camera_horizontal_intrinsic_parameter;
+    auto main_left_vector_y = (0.5 - main_l_v)/main_camera_vertical_intrinsic_parameter;
+    auto main_left_vector_z = 1.0;
+    auto main_left_vector = std::tuple<float, float, float>(
+        main_left_vector_x, main_left_vector_y, main_left_vector_z);
+
+    float second_l_u = std::get<0>(second_left_eye_uv);
+    float second_l_v = std::get<1>(second_left_eye_uv);
+    auto second_left_vector_x = (0.5 - second_l_u)/second_camera_horizontal_intrinsic_parameter;
+    auto second_left_vector_y = (0.5 - second_l_v)/second_camera_vertical_intrinsic_parameter;
+    auto second_left_vector_z = 1.0;
+    auto second_left_vector = std::tuple<float, float, float>(
+        second_left_vector_x, second_left_vector_y, second_left_vector_z);
+
+    get_closest_point_from_two_lines(
+        main_left_vector,
+        main_camera_position,
+        second_left_vector,
+        second_camera_position,
+        left_eye_position_out);
+
+    float main_r_u = std::get<0>(main_right_eye_uv);
+    float main_r_v = std::get<1>(main_right_eye_uv);
+    auto main_right_vector_x = (0.5 - main_r_u)/main_camera_horizontal_intrinsic_parameter;
+    auto main_right_vector_y = (0.5 - main_r_v)/main_camera_vertical_intrinsic_parameter;
+    auto main_right_vector_z = 1.0;
+    auto main_right_vector = std::tuple<float, float, float>(
+        main_right_vector_x, main_right_vector_y, main_right_vector_z);
+
+    float second_r_u = std::get<0>(second_right_eye_uv);
+    float second_r_v = std::get<1>(second_right_eye_uv);
+    auto second_right_vector_x = (0.5 - second_r_u)/second_camera_horizontal_intrinsic_parameter;
+    auto second_right_vector_y = (0.5 - second_r_v)/second_camera_vertical_intrinsic_parameter;
+    auto second_right_vector_z = 1.0;
+    auto second_right_vector = std::tuple<float, float, float>(
+        second_right_vector_x, second_right_vector_y, second_right_vector_z);
+
+    get_closest_point_from_two_lines(
+        main_right_vector,
+        main_camera_position,
+        second_right_vector,
+        second_camera_position,
+        right_eye_position_out);
+}
+
 void request_cv_process_update() {
     while (shared_vars::do_cv_thread_run) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000/60));
@@ -60,110 +250,119 @@ void request_cv_process_update() {
             }
             //std::cout << "DEBUG: QR COde width proportion, QR code height proportion: " + std::to_string(working_parameters::qr_code_width_proportion) + " " + std::to_string(working_parameters::qr_code_height_proportion) << std::endl;
         } else {
-            if (shared_vars::second_webcam_capture.isOpened()) {
-                shared_vars::second_webcam_capture >> second_webcam_output_image;
-            }
+            if (!shared_vars::second_webcam_capture.isOpened()) {
+                // Only one camera
 
-            // Get eye coordinates as pixels on the image. Coordinates should
-            // have the origin in the top left of the image.
-            std::tuple<float, float> left_eye_uv;
-            std::tuple<float, float> right_eye_uv;
+                // Get eye coordinates as pixels on the image. Coordinates should
+                // have the origin in the top left of the image.
+                std::tuple<float, float> left_eye_uv;
+                std::tuple<float, float> right_eye_uv;
 
-            bool did_detect_face = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::main_webcam_capture, shared_vars::bounding_box, main_webcam_output_image, left_eye_uv, right_eye_uv);
+                bool did_detect_face = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::main_webcam_capture, shared_vars::main_bounding_box, main_webcam_output_image, left_eye_uv, right_eye_uv);
 
-            // If the face detection did not work, then continue onto next loop
-            if (did_detect_face) {
-                // std::cout << std::endl; //DEBUG
-                float l_u = std::get<0>(left_eye_uv);
-                float l_v = std::get<1>(left_eye_uv);
+                // If the face detection did not work, then continue onto next loop
+                if (did_detect_face) {
+                    // std::cout << std::endl; //DEBUG
 
-                float r_u = std::get<0>(right_eye_uv);
-                float r_v = std::get<1>(right_eye_uv);
+                    std::tuple<float, float, float> left_eye_position;
+                    std::tuple<float, float, float> right_eye_position;
 
-                //std::cout << std::string("DEBUG: Left UV: ") + "(" + std::to_string(l_u) + ", " + std::to_string(l_v) + ")" + "Right UV: " + "(" + std::to_string(r_u) + ", " + std::to_string(r_v) + ")" << std::endl;
+                    get_3d_coordinates_single_camera(left_eye_uv, right_eye_uv, left_eye_position, right_eye_position);
 
-                // Calculate left eye and right eye depth
+                    float l_3d_x = std::get<0>(left_eye_position);
+                    float l_3d_y = std::get<1>(left_eye_position);
+                    float l_3d_z = std::get<2>(left_eye_position);
 
-                // Vectors pointing to left and right eyes
-                float l_vector_x = (0.5 - l_u)/parameters::main_camera_horizontal_intrinsic_parameter;
-                float l_vector_y = (0.5 - l_v)/parameters::main_camera_vertical_intrinsic_parameter;
-                float l_vector_z = 1;
-                float l_vector_mag = static_cast<float>(std::sqrt(std::pow(l_vector_x, 2) + std::pow(l_vector_y, 2) + std::pow(l_vector_z, 2)));
+                    float r_3d_x = std::get<0>(right_eye_position);
+                    float r_3d_y = std::get<1>(right_eye_position);
+                    float r_3d_z = std::get<2>(right_eye_position);
 
-                float r_vector_x = (0.5 - r_u)/parameters::main_camera_horizontal_intrinsic_parameter;
-                float r_vector_y = (0.5 - r_v)/parameters::main_camera_vertical_intrinsic_parameter;
-                float r_vector_z = 1;
-                float r_vector_mag = static_cast<float>(std::sqrt(std::pow(r_vector_x, 2) + std::pow(r_vector_y, 2) + std::pow(r_vector_z, 2)));
+                    if (shared_vars::is_renderer_active) {
+                        //std::cout << "DEBUG: renderer is active" << std::endl;
 
-                // Angle between the left and right vectors
-                float cosine_theta = (l_vector_x * r_vector_x + l_vector_y * r_vector_y + l_vector_z * r_vector_z)/(l_vector_mag * r_vector_mag);
-                float theta = std::acos(cosine_theta);
+                        std::vector<int64_t> request_code;
+                        request_code.push_back((int64_t)4);
 
-                // std::cout << "DEBUG: Horizontal intrinsic parameter " << std::to_string(parameters::camera_horizontal_intrinsic_parameter) << std::endl;
-                // std::cout << "DEBUG: Vertical intrinsic parameter " << std::to_string(parameters::camera_vertical_intrinsic_parameter) << std::endl;
-                // std::cout << std::string("DEBUG: Left Vector: ") + "(" + std::to_string(l_vector_x) + ", " + std::to_string(l_vector_y) + ", " + std::to_string(l_vector_z) + ")";
-                // std::cout << std::string(" Right Vector: ") + "(" + std::to_string(r_vector_x) + ", " + std::to_string(r_vector_y) + ", " + std::to_string(r_vector_z)+ ")" << std::endl;
-                //
-                // std::cout << "DEBUG: Distance between two eyes, UV: " + std::to_string(std::sqrt(std::pow(l_u - r_u, 2) + std::pow(l_v - r_v, 2))) << std::endl;
-                // std::cout << "DEBUG: Angle between left and right vectors: " + std::to_string(theta * 180/3.1415) + " degrees" << std::endl;
+                        try {
+                            boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<int64_t>(4)}));
+                            boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<float_t>(l_3d_x), static_cast<float_t>(l_3d_y), static_cast<float_t>(l_3d_z)}));
+                            boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<float_t>(r_3d_x), static_cast<float_t>(r_3d_y), static_cast<float_t>(r_3d_z)}));
+                        } catch (const boost::system::system_error& e) {
+                            if (e.code() == boost::asio::error::broken_pipe ||
+                                e.code() == boost::asio::error::connection_reset ||
+                                e.code() == boost::asio::error::eof) {
+                                std::cout << "Socket disconnected: " << e.what() << std::endl;
+                                shared_vars::is_renderer_active = false;
 
-                float both_eye_distance = shared_vars::PUPILLARY_DISTANCE_INCHES/2.0/std::sin(theta/2);
-
-                // Depth is z axis
-                // Derived from similar triangles
-                float l_3d_z = both_eye_distance / std::sqrt(std::pow(l_vector_x, 2) + 1);
-                float r_3d_z = both_eye_distance / std::sqrt(std::pow(r_vector_x, 2) + 1);
-
-                // Using eye coordinates, estimate eye positions in 3D space. Origin
-                // should be the center of the screen.
-
-                // From Chapter 43 of MIT Visionbook, equation 43.1, converting 2D
-                // homogenous point to 3D point is the formula
-                // depth for that pixel * inverse of intrinsic matrix * 2d point
-                //
-                // Axes are calculated correctly so that you can just plug the
-                // coords directly into Godot. Origin is the center of the scene.
-                // When facing the display, right is positive x, up is positive y,
-                // and out of the screen is positive z.
-                float l_3d_x = (0.5 - l_u)/parameters::main_camera_horizontal_intrinsic_parameter*l_3d_z;
-                float l_3d_y = (0.5 - l_v)/parameters::main_camera_vertical_intrinsic_parameter*l_3d_z;
-
-                float r_3d_x = (0.5 - r_u)/parameters::main_camera_horizontal_intrinsic_parameter*r_3d_z;
-                float r_3d_y = (0.5 - r_v)/parameters::main_camera_vertical_intrinsic_parameter*r_3d_z;
-
-                l_3d_y += parameters::main_camera_vertical_offset_inches;
-                r_3d_y += parameters::main_camera_vertical_offset_inches;
-
-                l_3d_x += parameters::main_camera_horizontal_offset_inches;
-                r_3d_x += parameters::main_camera_horizontal_offset_inches;
-
-                // std::cout << "Left eye position, inches: ("
-                //     + std::to_string(l_3d_x)  + ", " + std::to_string(l_3d_y) + ", " + std::to_string(l_3d_z)
-                //     + "). Right eye position, inches: ("
-                //     + std::to_string(r_3d_x)  + ", " + std::to_string(r_3d_y) + ", " + std::to_string(r_3d_z)
-                // + ")" << std::endl;
-
-
-                if (shared_vars::is_renderer_active) {
-                    //std::cout << "DEBUG: renderer is active" << std::endl;
-
-                    std::vector<int64_t> request_code;
-                    request_code.push_back((int64_t)4);
-
-                    try {
-                        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<int64_t>(4)}));
-                        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<float_t>(l_3d_x), static_cast<float_t>(l_3d_y), static_cast<float_t>(l_3d_z)}));
-                        boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<float_t>(r_3d_x), static_cast<float_t>(r_3d_y), static_cast<float_t>(r_3d_z)}));
-                    } catch (const boost::system::system_error& e) {
-                        if (e.code() == boost::asio::error::broken_pipe ||
-                            e.code() == boost::asio::error::connection_reset ||
-                            e.code() == boost::asio::error::eof) {
-                            std::cout << "Socket disconnected: " << e.what() << std::endl;
-                            shared_vars::is_renderer_active = false;
-
-                            g_application_quit(G_APPLICATION(shared_vars::app));
+                                g_application_quit(G_APPLICATION(shared_vars::app));
+                            }
                         }
                     }
+                }
+            } else {
+                // Two cameras
+
+                std::tuple<float, float> main_left_eye_uv;
+                std::tuple<float, float> main_right_eye_uv;
+
+                std::tuple<float, float> second_left_eye_uv;
+                std::tuple<float, float> second_right_eye_uv;
+
+                bool did_detect_face = cv_actions::detect_face(
+                    shared_vars::face_detector_pointer,
+                    shared_vars::main_webcam_capture,
+                    shared_vars::main_bounding_box,
+                    main_webcam_output_image,
+                    main_left_eye_uv,
+                    main_right_eye_uv
+                    );
+
+                did_detect_face = cv_actions::detect_face(
+                    shared_vars::face_detector_pointer,
+                    shared_vars::second_webcam_capture,
+                    shared_vars::second_bounding_box,
+                    second_webcam_output_image,
+                    second_left_eye_uv,
+                    second_right_eye_uv
+                    ) && did_detect_face;
+
+                auto main_camera_position = std::tuple<float, float, float>(
+                    parameters::main_camera_horizontal_offset_inches,
+                    parameters::main_camera_vertical_offset_inches,
+                    0.0);
+
+                auto second_camera_position = std::tuple<float, float, float>(
+                    parameters::second_camera_horizontal_offset_inches,
+                    parameters::second_camera_vertical_offset_inches,
+                    0.0);
+
+                std::tuple<float, float, float> left_eye_position;
+                std::tuple<float, float, float> right_eye_position;
+
+                get_3d_coordinates_two_cameras(
+                    main_left_eye_uv,
+                    main_right_eye_uv,
+                    second_left_eye_uv,
+                    second_right_eye_uv,
+                    main_camera_position,
+                    second_camera_position,
+                    parameters::main_camera_horizontal_intrinsic_parameter,
+                    parameters::main_camera_vertical_intrinsic_parameter,
+                    parameters::second_camera_horizontal_intrinsic_parameter,
+                    parameters::second_camera_vertical_intrinsic_parameter,
+                    left_eye_position,
+                    right_eye_position
+                    );
+
+                std::cout << "parameters::second_camera_horizontal_intrinsic_parameter " << parameters::second_camera_horizontal_intrinsic_parameter << std::endl;
+                std::cout << "Left eye " << std::get<0>(left_eye_position)  << " " << std::get<1>(left_eye_position) << " " << std::get<2>(left_eye_position) << std::endl;
+                std::cout << "Right eye " << std::get<0>(right_eye_position)  << " " << std::get<1>(right_eye_position) << " " << std::get<2>(right_eye_position) << std::endl;
+                std::cout << std::endl;
+
+                if (!std::isnan(std::get<0>(left_eye_position))) {
+                    boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<int64_t>(4)}));
+                    boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({std::get<0>(left_eye_position), std::get<1>(left_eye_position), std::get<2>(left_eye_position)}));
+                    boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({std::get<0>(right_eye_position), std::get<1>(right_eye_position), std::get<2>(right_eye_position)}));
                 }
             }
         }
@@ -285,7 +484,7 @@ activate (GtkApplication *app,
     if (first_frame.empty()) {
         std::cerr << "Error: Could not capture initial frame from webcam." << std::endl;
     } else {
-        shared_vars::bounding_box = cv::Rect(0, 0, first_frame.cols, first_frame.rows);
+        shared_vars::main_bounding_box = cv::Rect(0, 0, first_frame.cols, first_frame.rows);
     }
 
     // Set up face detector
