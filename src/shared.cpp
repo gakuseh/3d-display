@@ -44,15 +44,14 @@ namespace shared_vars {
 
     GtkBuilder *builder = nullptr;
 
-    int BUFFER_SIZE = 5;
-    std::queue<double> left_eye_horizontal_angle_buffer;
-    std::queue<double> right_eye_horizontal_angle_buffer;
-    std::queue<double> left_eye_vertical_angle_buffer;
-    std::queue<double> right_eye_vertical_angle_buffer;
-    double left_eye_horizontal_angle_buffer_sum = 0.0;
-    double right_eye_horizontal_angle_buffer_sum = 0.0;
-    double left_eye_vertical_angle_buffer_sum = 0.0;
-    double right_eye_vertical_angle_buffer_sum = 0.0;
+    std::queue<std::tuple<float, float>> left_eye_uv_buffer;
+    std::queue<std::tuple<float, float>> right_eye_uv_buffer;
+
+    float left_eye_u_buffer_sum;
+    float left_eye_v_buffer_sum;
+
+    float right_eye_u_buffer_sum;
+    float right_eye_v_buffer_sum;
 
     boost::process::child* renderer_program = nullptr;
 }

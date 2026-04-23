@@ -183,6 +183,12 @@ void get_3d_coordinates_two_cameras(
     std::tuple<float, float, float>& right_eye_position_out
     ) {
 
+    std::cout << "Main Left eye uv: " << std::get<0>(main_left_eye_uv) << ", " << std::get<1>(main_left_eye_uv) << std::endl;
+    std::cout << "Main Right eye uv: " << std::get<0>(main_right_eye_uv) << ", " << std::get<1>(main_right_eye_uv) << std::endl;
+    std::cout << "Second Left eye uv: " << std::get<0>(second_left_eye_uv) << ", " << std::get<1>(second_left_eye_uv) << std::endl;
+    std::cout << "Second Right eye uv: " << std::get<0>(second_right_eye_uv) << ", " << std::get<1>(second_right_eye_uv) << std::endl;
+    std::cout << std::endl;
+
     float main_l_u = std::get<0>(main_left_eye_uv);
     float main_l_v = std::get<1>(main_left_eye_uv);
     auto main_left_vector_x = (0.5 - main_l_u)/main_camera_horizontal_intrinsic_parameter;
@@ -255,14 +261,59 @@ void request_cv_process_update() {
 
                 // Get eye coordinates as pixels on the image. Coordinates should
                 // have the origin in the top left of the image.
-                std::tuple<float, float> left_eye_uv;
-                std::tuple<float, float> right_eye_uv;
+                std::tuple<float, float> new_left_eye_uv;
+                std::tuple<float, float> new_right_eye_uv;
 
-                bool did_detect_face = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::main_webcam_capture, shared_vars::main_bounding_box, main_webcam_output_image, left_eye_uv, right_eye_uv);
+                bool did_detect_face = cv_actions::detect_face(shared_vars::face_detector_pointer, shared_vars::main_webcam_capture, shared_vars::main_bounding_box, main_webcam_output_image, new_left_eye_uv, new_right_eye_uv);
 
                 // If the face detection did not work, then continue onto next loop
                 if (did_detect_face) {
-                    // std::cout << std::endl; //DEBUG
+                    // Smoothing
+
+                    shared_vars::left_eye_uv_buffer.push(new_left_eye_uv);
+                    shared_vars::right_eye_uv_buffer.push(new_right_eye_uv);
+
+                    shared_vars::left_eye_u_buffer_sum += std::get<0>(new_left_eye_uv);
+                    shared_vars::left_eye_v_buffer_sum += std::get<1>(new_left_eye_uv);
+
+                    shared_vars::right_eye_u_buffer_sum += std::get<0>(new_right_eye_uv);
+                    shared_vars::right_eye_v_buffer_sum += std::get<1>(new_right_eye_uv);
+
+                    if (shared_vars::left_eye_uv_buffer.size() > shared_vars::BUFFER_SIZE) {
+                        std::tuple<float, float> removed_tuple = shared_vars::left_eye_uv_buffer.front();
+                        shared_vars::left_eye_u_buffer_sum -= std::get<0>(removed_tuple);
+                        shared_vars::left_eye_v_buffer_sum -= std::get<1>(removed_tuple);
+                        shared_vars::left_eye_uv_buffer.pop();
+                    }
+
+                    if (shared_vars::right_eye_uv_buffer.size() > shared_vars::BUFFER_SIZE) {
+                        std::tuple<float, float> removed_tuple = shared_vars::right_eye_uv_buffer.front();
+                        shared_vars::right_eye_u_buffer_sum -= std::get<0>(removed_tuple);
+                        shared_vars::right_eye_v_buffer_sum -= std::get<1>(removed_tuple);
+                        shared_vars::right_eye_uv_buffer.pop();
+                    }
+
+                    auto left_eye_uv = std::tuple(
+                        shared_vars::left_eye_u_buffer_sum/shared_vars::left_eye_uv_buffer.size(),
+                        shared_vars::left_eye_v_buffer_sum/shared_vars::left_eye_uv_buffer.size()
+                        );
+                    auto right_eye_uv = std::tuple(
+                        shared_vars::right_eye_u_buffer_sum/shared_vars::right_eye_uv_buffer.size(),
+                        shared_vars::right_eye_v_buffer_sum/shared_vars::right_eye_uv_buffer.size()
+                        );
+
+                    // Check if new UV are too far from average
+                    float left_squared_dist = (std::get<0>(left_eye_uv) - std::get<0>(new_left_eye_uv))*(std::get<0>(left_eye_uv) - std::get<0>(new_left_eye_uv)) + (std::get<1>(left_eye_uv) - std::get<1>(new_left_eye_uv))*(std::get<1>(left_eye_uv) - std::get<1>(new_left_eye_uv));
+                    float right_squared_dist = (std::get<0>(right_eye_uv) - std::get<0>(new_right_eye_uv))*(std::get<0>(right_eye_uv) - std::get<0>(new_right_eye_uv)) + (std::get<1>(right_eye_uv) - std::get<1>(new_right_eye_uv))*(std::get<1>(right_eye_uv) - std::get<1>(new_right_eye_uv));
+
+                    if (left_squared_dist > 0.0025 || right_squared_dist > 0.0025) {
+                        shared_vars::left_eye_uv_buffer = std::queue<std::tuple<float, float>>();
+                        shared_vars::right_eye_uv_buffer = std::queue<std::tuple<float, float>>();
+                        shared_vars::left_eye_u_buffer_sum = 0;
+                        shared_vars::right_eye_u_buffer_sum = 0;
+                        shared_vars::left_eye_v_buffer_sum = 0;
+                        shared_vars::right_eye_v_buffer_sum = 0;
+                    }
 
                     std::tuple<float, float, float> left_eye_position;
                     std::tuple<float, float, float> right_eye_position;
@@ -354,10 +405,7 @@ void request_cv_process_update() {
                     right_eye_position
                     );
 
-                std::cout << "parameters::second_camera_horizontal_intrinsic_parameter " << parameters::second_camera_horizontal_intrinsic_parameter << std::endl;
-                std::cout << "Left eye " << std::get<0>(left_eye_position)  << " " << std::get<1>(left_eye_position) << " " << std::get<2>(left_eye_position) << std::endl;
-                std::cout << "Right eye " << std::get<0>(right_eye_position)  << " " << std::get<1>(right_eye_position) << " " << std::get<2>(right_eye_position) << std::endl;
-                std::cout << std::endl;
+                //std::cout << std::get<0>(left_eye_position)  << "," << std::get<1>(left_eye_position) << "," << std::get<2>(left_eye_position) << "," << std::get<0>(right_eye_position)  << "," << std::get<1>(right_eye_position) << "," << std::get<2>(right_eye_position) << std::endl;
 
                 if (!std::isnan(std::get<0>(left_eye_position))) {
                     boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer({static_cast<int64_t>(4)}));

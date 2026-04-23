@@ -21,6 +21,7 @@
 
 namespace shared_vars {
     inline float PUPILLARY_DISTANCE_INCHES = 2.440945;
+    inline int BUFFER_SIZE = 30.0;
 
     extern GtkApplication* app;
     extern GtkWidget* main_window;
@@ -73,6 +74,16 @@ namespace shared_vars {
     extern double right_eye_horizontal_angle_buffer_sum;
     extern double left_eye_vertical_angle_buffer_sum;
     extern double right_eye_vertical_angle_buffer_sum;
+
+    extern std::queue<std::tuple<float, float>> left_eye_uv_buffer;
+    extern std::queue<std::tuple<float, float>> right_eye_uv_buffer;
+
+    extern float left_eye_u_buffer_sum;
+    extern float left_eye_v_buffer_sum;
+
+    extern float right_eye_u_buffer_sum;
+    extern float right_eye_v_buffer_sum;
+
 
 
     extern boost::process::child* renderer_program;
