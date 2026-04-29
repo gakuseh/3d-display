@@ -553,6 +553,7 @@ activate (GtkApplication *app,
 
     // Connect signal for buttons
     GtkWidget *calibrate_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "calibrate_button"));
+    GtkWidget *switch_3d_mode_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "switch_3d_mode"));
     GtkWidget *main_fov_calibration_capture_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "main_fov_calibration_capture_button"));
     GtkWidget *second_fov_calibration_capture_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "second_fov_calibration_capture_button"));
     GtkWidget *display_density_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "display_density_continue_button"));
@@ -564,6 +565,7 @@ activate (GtkApplication *app,
     GtkWidget *second_vertical_offset_continue_button = GTK_WIDGET(gtk_builder_get_object(shared_vars::builder, "second_vertical_offset_continue_button"));
 
     g_signal_connect(calibrate_button, "clicked", G_CALLBACK(event_handlers::on_calibrate_button_clicked), NULL);
+    g_signal_connect(switch_3d_mode_button, "clicked", G_CALLBACK(event_handlers::on_switch_3d_mode_clicked), NULL);
     g_signal_connect(main_fov_calibration_capture_button, "clicked", G_CALLBACK(event_handlers::on_main_fov_calibration_capture_clicked), NULL);
     g_signal_connect(second_fov_calibration_capture_button, "clicked", G_CALLBACK(event_handlers::on_second_fov_calibration_capture_clicked), NULL);
     g_signal_connect(display_density_continue_button, "clicked", G_CALLBACK(event_handlers::on_display_density_continue_clicked), NULL);

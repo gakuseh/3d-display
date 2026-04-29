@@ -27,6 +27,14 @@ void event_handlers::on_calibrate_button_clicked (GtkWidget *widget, gpointer _)
     gtk_stack_set_visible_child_name(shared_vars::stack_widget, "main_fov_calibration_box");
 }
 
+void event_handlers::on_switch_3d_mode_clicked(GtkWidget* widget, gpointer data)
+{
+    // Tell the renderer to switch modes
+    std::vector<int64_t> message;
+    message.push_back((int64_t)9);
+    boost::asio::write(shared_vars::renderer_socket, boost::asio::buffer(message));
+}
+
 void event_handlers::on_main_fov_calibration_capture_clicked(GtkWidget *widget, gpointer _)
 {
     gtk_stack_set_visible_child_name(shared_vars::stack_widget, "measurements_calibration_box");
