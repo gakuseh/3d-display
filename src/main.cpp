@@ -90,15 +90,15 @@ void get_3d_coordinates_single_camera(
     float distance_to_eyes = shared_vars::PUPILLARY_DISTANCE_INCHES/std::sqrt(2.0 * (1 - unit_vector_dot_product));
 
     left_eye_position_out = std::tuple(
-        l_vector_x * distance_to_eyes,
-        l_vector_y * distance_to_eyes,
-        l_vector_z * distance_to_eyes
+        l_vector_x * distance_to_eyes + parameters::main_camera_horizontal_offset_inches,
+        l_vector_y * distance_to_eyes + parameters::main_camera_vertical_offset_inches,
+        l_vector_z * distance_to_eyes + parameters::main_camera_z_offset_inches
         );
 
     right_eye_position_out = std::tuple(
-        r_vector_x * distance_to_eyes,
-        r_vector_y * distance_to_eyes,
-        r_vector_z * distance_to_eyes
+        r_vector_x * distance_to_eyes + parameters::main_camera_horizontal_offset_inches,
+        r_vector_y * distance_to_eyes + parameters::main_camera_vertical_offset_inches,
+        r_vector_z * distance_to_eyes + parameters::main_camera_z_offset_inches
         );
 }
 
@@ -372,15 +372,15 @@ void request_cv_process_update() {
                     second_right_eye_uv
                     ) && did_detect_face;
 
-                auto main_camera_position = std::tuple<float, float, float>(
+                auto main_camera_position = std::tuple(
                     parameters::main_camera_horizontal_offset_inches,
                     parameters::main_camera_vertical_offset_inches,
-                    0.0);
+                    parameters::main_camera_z_offset_inches);
 
-                auto second_camera_position = std::tuple<float, float, float>(
+                auto second_camera_position = std::tuple(
                     parameters::second_camera_horizontal_offset_inches,
                     parameters::second_camera_vertical_offset_inches,
-                    0.0);
+                    parameters::second_camera_z_offset_inches);
 
                 std::tuple<float, float, float> left_eye_position;
                 std::tuple<float, float, float> right_eye_position;
