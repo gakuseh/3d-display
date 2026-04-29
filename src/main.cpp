@@ -109,6 +109,20 @@ void get_closest_point_from_two_lines(
     const std::tuple<float, float, float>& second_camera_position,
     std::tuple<float, float, float>& closest_point)
 {
+    /*
+    lines are functions M(s) = main_vector * s + main_camera_position
+                        S(t) = second_vector * t + second_camera_position
+
+    so let W(j) = M(j) - S(j) for a given j. W(j) is vector pointing from one
+    point on line M to the other point on line S
+
+    so as we change j we should get to the point where W vector is perpendicular
+    to both M and S. that's when W is the shortest, and so is the closest point.
+
+    so basically solve for j, by finding j s.t. W(j) dot main_vector = W(j) dot second_vector = 0
+    */
+
+
     float main_x = std::get<0>(main_vector);
     float main_y = std::get<1>(main_vector);
     float main_z = std::get<2>(main_vector);
