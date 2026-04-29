@@ -21,10 +21,10 @@ GdkPaintable* cv_mat_to_paintable(const cv::Mat& mat) {
 
     // Convert BGR to RGB (OpenCV uses BGR, GTK expects RGB)
     cv::cvtColor(mat, rgb_mat, cv::COLOR_BGR2RGB);
-    
+
     // Create GBytes from cv::Mat data
     GBytes* bytes = g_bytes_new(rgb_mat.data, rgb_mat.total() * rgb_mat.elemSize());
-    
+
     // Create GdkTexture from bytes
     GdkTexture* texture = gdk_memory_texture_new(
         rgb_mat.cols,              // width
@@ -69,56 +69,37 @@ void get_3d_coordinates_single_camera(
     float r_vector_z = 1;
     float r_vector_mag = static_cast<float>(std::sqrt(std::pow(r_vector_x, 2) + std::pow(r_vector_y, 2) + std::pow(r_vector_z, 2)));
 
-    // Angle between the left and right vectors
-    float cosine_theta = (l_vector_x * r_vector_x + l_vector_y * r_vector_y + l_vector_z * r_vector_z)/(l_vector_mag * r_vector_mag);
-    float theta = std::acos(cosine_theta);
+    // Calculations based on https://www.desmos.com/3d/gzap1niwhb
+    // Assumptions: 1) Eyes are distance PUPILLARY_DISTANCE_INCHES apart
+    //              2) Eyes line on a plane, whose normal vector points from the
+    //                 origin to the midpoint between the two eyes. This implies:
+    //              3) Eyes are both equally distant to the origin.
 
-    // std::cout << "DEBUG: Horizontal intrinsic parameter " << std::to_string(parameters::camera_horizontal_intrinsic_parameter) << std::endl;
-    // std::cout << "DEBUG: Vertical intrinsic parameter " << std::to_string(parameters::camera_vertical_intrinsic_parameter) << std::endl;
-    // std::cout << std::string("DEBUG: Left Vector: ") + "(" + std::to_string(l_vector_x) + ", " + std::to_string(l_vector_y) + ", " + std::to_string(l_vector_z) + ")";
-    // std::cout << std::string(" Right Vector: ") + "(" + std::to_string(r_vector_x) + ", " + std::to_string(r_vector_y) + ", " + std::to_string(r_vector_z)+ ")" << std::endl;
-    //
-    // std::cout << "DEBUG: Distance between two eyes, UV: " + std::to_string(std::sqrt(std::pow(l_u - r_u, 2) + std::pow(l_v - r_v, 2))) << std::endl;
-    // std::cout << "DEBUG: Angle between left and right vectors: " + std::to_string(theta * 180/3.1415) + " degrees" << std::endl;
+    // Scale vectors so that they are unit vectors
 
-    float both_eye_distance = shared_vars::PUPILLARY_DISTANCE_INCHES/2.0/std::sin(theta/2);
+    l_vector_x /= l_vector_mag;
+    l_vector_y /= l_vector_mag;
+    l_vector_z /= l_vector_mag;
 
-    // Depth is z axis
-    // Derived from similar triangles
-    float l_3d_z = both_eye_distance / std::sqrt(std::pow(l_vector_x, 2) + 1);
-    float r_3d_z = both_eye_distance / std::sqrt(std::pow(r_vector_x, 2) + 1);
+    r_vector_x /= r_vector_mag;
+    r_vector_y /= r_vector_mag;
+    r_vector_z /= r_vector_mag;
 
-    // Using eye coordinates, estimate eye positions in 3D space. Origin
-    // should be the center of the screen.
+    float unit_vector_dot_product = l_vector_x * r_vector_x + l_vector_y * r_vector_y + l_vector_z * r_vector_z;
 
-    // From Chapter 43 of MIT Visionbook, equation 43.1, converting 2D
-    // homogenous point to 3D point is the formula
-    // depth for that pixel * inverse of intrinsic matrix * 2d point
-    //
-    // Axes are calculated correctly so that you can just plug the
-    // coords directly into Godot. Origin is the center of the scene.
-    // When facing the display, right is positive x, up is positive y,
-    // and out of the screen is positive z.
-    float l_3d_x = (0.5 - l_u)/parameters::main_camera_horizontal_intrinsic_parameter*l_3d_z;
-    float l_3d_y = (0.5 - l_v)/parameters::main_camera_vertical_intrinsic_parameter*l_3d_z;
+    float distance_to_eyes = shared_vars::PUPILLARY_DISTANCE_INCHES/std::sqrt(2.0 * (1 - unit_vector_dot_product));
 
-    float r_3d_x = (0.5 - r_u)/parameters::main_camera_horizontal_intrinsic_parameter*r_3d_z;
-    float r_3d_y = (0.5 - r_v)/parameters::main_camera_vertical_intrinsic_parameter*r_3d_z;
+    left_eye_position_out = std::tuple(
+        l_vector_x * distance_to_eyes,
+        l_vector_y * distance_to_eyes,
+        l_vector_z * distance_to_eyes
+        );
 
-    l_3d_y += parameters::main_camera_vertical_offset_inches;
-    r_3d_y += parameters::main_camera_vertical_offset_inches;
-
-    l_3d_x += parameters::main_camera_horizontal_offset_inches;
-    r_3d_x += parameters::main_camera_horizontal_offset_inches;
-
-    // std::cout << "Left eye position, inches: ("
-    //     + std::to_string(l_3d_x)  + ", " + std::to_string(l_3d_y) + ", " + std::to_string(l_3d_z)
-    //     + "). Right eye position, inches: ("
-    //     + std::to_string(r_3d_x)  + ", " + std::to_string(r_3d_y) + ", " + std::to_string(r_3d_z)
-    // + ")" << std::endl;
-
-    left_eye_position_out = std::tuple<float, float, float>(l_3d_x, l_3d_y, l_3d_z);
-    right_eye_position_out = std::tuple<float, float, float>(r_3d_x, r_3d_y, r_3d_z);
+    right_eye_position_out = std::tuple(
+        r_vector_x * distance_to_eyes,
+        r_vector_y * distance_to_eyes,
+        r_vector_z * distance_to_eyes
+        );
 }
 
 void get_closest_point_from_two_lines(
@@ -246,7 +227,7 @@ void request_cv_process_update() {
         cv::Mat main_webcam_output_image;
         cv::Mat second_webcam_output_image;
 
-        if (!shared_vars::is_current_cv_action_face) { 
+        if (!shared_vars::is_current_cv_action_face) {
             // Do QR Code
 
             if (!shared_vars::is_doing_second_camera_qr_calibration) {
@@ -445,7 +426,7 @@ void request_cv_process_update() {
     }
 }
 
-void handle_webcam_dispatch() {  
+void handle_webcam_dispatch() {
     shared_vars::main_webcam_paintable_mutex.lock();
 
     gtk_picture_set_paintable(shared_vars::main_webcam_image, shared_vars::main_webcam_paintable);
